@@ -25,6 +25,20 @@ io.on('connection', function(socket) {
         }
     }
 
+    socket.on('updatePosition', function(data) {
+        player.position.x = data.position.x;
+        player.position.y = data.position.y;
+
+        socket.broadcast.emit('updatePosition', player);
+    });
+
+    socket.on('updateRotation', function(data) {
+        player.tankRotation = data.tankRotation;
+        player.barrelRotation = data.barrelRotation;
+
+        socket.broadcast.emit('updateRotation', player);
+    });
+
     socket.on('disconnect', function() {
         console.log('A player has disconnected');
         delete players[thisPlayerID];
