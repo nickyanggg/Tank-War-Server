@@ -6,10 +6,10 @@ module.exports = class LobbyBase {
         this.connections = [];
     }
 
-    onUpdate(lobbys) {
+    onUpdate(rooms) {
 
         let lobby = this;
-        lobby.updateBaseLobby(lobbys);
+        lobby.updateBaseLobby(rooms);
     }
 
     onEnterLobby(connection=Connection) {
@@ -38,24 +38,24 @@ module.exports = class LobbyBase {
         }
     }
 
-    updateBaseLobby(lobbys) {
+    updateBaseLobby(rooms) {
         let lobby = this;
         let connections = lobby.connections;
         let returnData = []
 
-        for (let id in lobbys) {
+        for (let id in rooms) {
             let data = {
-                id: lobbys[id].id,
-                players: lobbys[id].connections.length,
-                maxPlayers: lobbys[id].settings.maxPlayers,
-                gameMode: lobbys[id].settings.gameMode, 
-                playing: lobbys[id].playing
+                id: rooms[id].id,
+                player_num: rooms[id].connections.length,
+                maxPlayers: rooms[id].settings.maxPlayers,
+                gameMode: rooms[id].settings.gameMode, 
+                playing: rooms[id].playing
             }
             returnData.push(data);
         }
 
         connections.forEach(connection => {
-            connection.socket.emit('updateBaseLobby', { lobbys: returnData.length, gameLobbys: returnData });
+            connection.socket.emit('updateBaseLobby', { gameRoomsInfo: returnData });
         });
     }
 }

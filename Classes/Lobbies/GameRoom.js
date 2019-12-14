@@ -1,33 +1,33 @@
 let LobbyBase = require('./LobbyBase');
-let GameLobbySettings = require('./GameLobbySettings');
+let GameRoomSettings = require('./GameRoomSettings');
 let Connection = require('../Connection');
 let Bullet = require('../Bullet');
 
-module.exports = class GameLobby extends LobbyBase {
-    constructor(id, settings=GameLobbySettings) {
+module.exports = class GameRoom extends LobbyBase {
+    constructor(id, settings=GameRoomSettings) {
         super(id);
         this.settings = settings;
         this.playing = false;
-        this.blue = 3;
-        this.orange = 3;
+        this.blue_remain = 3;
+        this.orange_remain = 3;
         this.bullets = [];
     }
 
     onUpdate() {
-        let lobby = this;
+        let room = this;
 
-        if (lobby.playing) {
-            lobby.updateBullets();
-            lobby.updateDeadPlayers();
+        if (room.playing) {
+            room.updateBullets();
+            room.updateDeadPlayers();
         } else {
-            lobby.updateGameLobby();
+            room.updateGameRoom();
         }
     }
 
-    // canEnterLobby(connection=Connection) {
-    //     let lobby = this;
-    //     let maxPlayerCount = lobby.settings.maxPlayers;
-    //     let currentPlayerCount = lobby.connections.length;
+    // canEnterRoom(connection=Connection) {
+    //     let room = this;
+    //     let maxPlayerCount = room.settings.maxPlayers;
+    //     let currentPlayerCount = room.connections.length;
 
     //     if (currentPlayerCount + 1 > maxPlayerCount) {
     //         return false;
@@ -36,35 +36,35 @@ module.exports = class GameLobby extends LobbyBase {
     //     return true;
     // }
 
-    onEnterLobby(connection=Connection) {
-        let lobby = this;
+    onEnterRoom(connection=Connection) {
+        let room = this;
         let socket = connection.socket;
 
         super.onEnterLobby(connection);
 
-        lobby.addPlayer(connection);
+        room.spawnPlayerToGameRoom(connection);
 
         // socket.emit('loadGame');
-        socket.emit('loadGameLobby', { id: lobby.id });
+        socket.emit('loadGameRoom', { id: room.id });
 
         //Handle spawning any server spawned objects here
         //Example: loot, perhaps flying bullets etc
     }
 
-    onLeaveLobby(connection=Connection) {
-        let lobby = this;
+    onLeaveRoom(connection=Connection) {
+        let room = this;
 
-        super.onLeaveLobby(connection);
+        super.onLeaveRoom(connection);
 
-        lobby.removePlayer(connection);
+        room.removePlayer(connection);
 
         //Handle unspawning any server spawned objects here
         //Example: loot, perhaps flying bullets etc
     }
 
-    updateGameLobby() {
-        let lobby = this;
-        let connections = lobby.connections;
+    updateGameRoom() {
+        let room = this;
+        let connections = room.connections;
         let playersData = [];
         connections.forEach(connection => {
             let player = connection.player;
@@ -78,23 +78,23 @@ module.exports = class GameLobby extends LobbyBase {
             playersData.push(playerData);
         });
 
-        // or maybe lobby owner broadcast ?
+        // or maybe room owner broadcast ?
         connections.forEach(connection => {
             let socket = connection.socket;
-            socket.emit('updateGameLobby', { players: playersData.length, playersData: playersData });
+            socket.emit('updateGameRoom', { playersData: playersData });
         });
     }
 
     updateBullets() {
-        let lobby = this;
-        let bullets = lobby.bullets;
-        let connections = lobby.connections;
+        let room = this;
+        let bullets = room.bullets;
+        let connections = room.connections;
 
         bullets.forEach(bullet => {
             let isDestroyed = bullet.onUpdate();
 
             if (isDestroyed) {
-                lobby.despawnBullet(bullet);
+                room.despawnBullet(bullet);
             } else {
                 // let returnData = {
                 //     id: bullet.id,
@@ -113,8 +113,8 @@ module.exports = class GameLobby extends LobbyBase {
     }
 
     updateDeadPlayers() {
-        let lobby = this;
-        let connections = lobby.connections;
+        let room = this;
+        let connections = room.connections;
 
         connections.forEach(connection => {
             let player = connection.player;
@@ -132,14 +132,14 @@ module.exports = class GameLobby extends LobbyBase {
                     }
 
                     socket.emit('playerRespawn', returnData);
-                    socket.broadcast.to(lobby.id).emit('playerRespawn', returnData);
+                    socket.broadcast.to(room.id).emit('playerRespawn', returnData);
                 }
             }
         });
     }
 
     onFireBullet(connection=Connection, data) {
-        let lobby = this;
+        let room = this;
 
         let bullet = new Bullet();
         bullet.name = 'Bullet';
@@ -149,7 +149,7 @@ module.exports = class GameLobby extends LobbyBase {
         bullet.direction.x = data.direction.x;
         bullet.direction.y = data.direction.y;
 
-        lobby.bullets.push(bullet);
+        room.bullets.push(bullet);
 
         let returnData = {
             name: bullet.name,
@@ -167,20 +167,20 @@ module.exports = class GameLobby extends LobbyBase {
         }
 
         connection.socket.emit('serverSpawn', returnData);
-        connection.socket.broadcast.to(lobby.id).emit('serverSpawn', returnData); //Only broadcast to those in the same lobby as us
+        connection.socket.broadcast.to(room.id).emit('serverSpawn', returnData); //Only broadcast to those in the same room as us
     }
 
     onCollisionDestroy(connection=Connection, data) {
-        let lobby = this;
+        let room = this;
 
-        let returnBullets = lobby.bullets.filter(bullet => {
+        let returnBullets = room.bullets.filter(bullet => {
             return bullet.id == data.id
         });
 
         returnBullets.forEach(bullet => {
             let playerHit = false;
 
-            lobby.connections.forEach(c => {
+            room.connections.forEach(c => {
                 let player = c.player;
 
                 if (bullet.activator != player.id) {
@@ -194,11 +194,11 @@ module.exports = class GameLobby extends LobbyBase {
                                 id: player.id
                             }
                             c.socket.emit('playerDied', returnData);
-                            c.socket.broadcast.to(lobby.id).emit('playerDied', returnData);
+                            c.socket.broadcast.to(room.id).emit('playerDied', returnData);
                         } else {
                             console.log('Player with id: ' + player.id + ' has (' + player.health + ') health left');
                         }
-                        lobby.despawnBullet(bullet);
+                        room.despawnBullet(bullet);
                     }
                 }
             });
@@ -210,9 +210,9 @@ module.exports = class GameLobby extends LobbyBase {
     }
 
     despawnBullet(bullet=Bullet) {
-        let lobby = this;
-        let bullets = lobby.bullets;
-        let connections = lobby.connections;
+        let room = this;
+        let bullets = room.bullets;
+        let connections = room.connections;
 
         console.log('Destroying bullet (' + bullet.id + ')');
         let index = bullets.indexOf(bullet);
@@ -230,15 +230,15 @@ module.exports = class GameLobby extends LobbyBase {
         }
     }
 
-    addPlayer(connection=Connection) {
-        let lobby = this;
-        let connections = lobby.connections;
+    spawnPlayerToGameRoom(connection=Connection) {
+        let room = this;
+        let connections = room.connections;
         let socket = connection.socket;
-        if (lobby.blue >= lobby.orange) {
-            lobby.blue -= 1;
+        if (room.blue_remain >= room.orange_remain) {
+            room.blue_remain -= 1;
             connection.player.team = 'blue';
         } else {
-            lobby.orange -= 1;
+            room.orange_remain -= 1;
             connection.player.team = 'orange';
         }
 
@@ -251,9 +251,9 @@ module.exports = class GameLobby extends LobbyBase {
         }
 
         // socket.emit('spawn', returnData); //tell myself I have spawned
-        // socket.broadcast.to(lobby.id).emit('spawn', returnData); // Tell others
+        // socket.broadcast.to(room.id).emit('spawn', returnData); // Tell others
 
-        // //Tell myself about everyone else already in the lobby
+        // //Tell myself about everyone else already in the room
         // connections.forEach(c => {
         //     if(c.player.id != connection.player.id) {
         //         socket.emit('spawn', {
@@ -262,12 +262,12 @@ module.exports = class GameLobby extends LobbyBase {
         //     }
         // });
 
-        socket.emit('spawnToGameLobby', returnData);
-        socket.broadcast.to(lobby.id).emit('spawnToGameLobby', returnData);
+        socket.emit('spawnToGameRoom', returnData);
+        socket.broadcast.to(room.id).emit('spawnToGameRoom', returnData);
 
         connections.forEach(c => {
             if(c.player.id != connection.player.id) {
-                socket.emit('spawnToGameLobby', {
+                socket.emit('spawnToGameRoom', {
                     id: c.player.id,
                     username: c.player.username,
                     tank: c.player.tank,
@@ -279,20 +279,20 @@ module.exports = class GameLobby extends LobbyBase {
     }
 
     removePlayer(connection=Connection) {
-        let lobby = this;
+        let room = this;
         let player = connection.player;
 
-        // connection.socket.broadcast.to(lobby.id).emit('disconnected', {
+        // connection.socket.broadcast.to(room.id).emit('disconnected', {
         //     id: connection.player.id
         // });
 
         if (player.team == 'blue') {
-            lobby.blue += 1;
+            room.blue_remain += 1;
         } else if (player.team == 'orange') {
-            lobby.orange += 1;
+            room.orange_remain += 1;
         }
 
-        connection.socket.broadcast.to(lobby.id).emit('leaveGameLobby', {
+        connection.socket.broadcast.to(room.id).emit('leaveGameRoom', {
             id: connection.player.id
         });
     }

@@ -3,27 +3,27 @@ let Player = require('./Player');
 
 //Lobbies
 let LobbyBase = require('./Lobbies/LobbyBase');
-let GameLobby = require('./Lobbies/GameLobby');
-let GameLobbySettings = require('./Lobbies/GameLobbySettings');
+let GameRoom = require('./Lobbies/GameRoom');
+let GameRoomSettings = require('./Lobbies/GameRoomSettings');
 
 module.exports = class Server {
     constructor() {
         this.connections = [];
-        this.lobbys = [];
+        this.rooms = [];
         this.baseLobby = new LobbyBase(-1);
-        // this.lobbys[0] = new LobbyBase(0);
+        // this.rooms[0] = new LobbyBase(0);
     }
 
     //Interval update every 100 milliseconds
     onUpdate() {
         let server = this;
 
-        //Update each lobby
-        for (let id in server.lobbys) {
-            server.lobbys[id].onUpdate();
+        //Update each room
+        for (let id in server.rooms) {
+            server.rooms[id].onUpdate();
         }
 
-        server.baseLobby.onUpdate(server.lobbys);
+        server.baseLobby.onUpdate(server.rooms);
     }
 
     //Handle a new connection to the server
@@ -35,13 +35,13 @@ module.exports = class Server {
         connection.server = server;
 
         let player = connection.player;
-        let lobbys = server.lobbys;
+        let rooms = server.rooms;
 
         console.log('Added new player to the server (' + player.id + ')');
         server.connections[player.id] = connection;
 
         socket.join(player.lobby);
-        // connection.lobby = lobbys[player.lobby];
+        // connection.lobby = rooms[player.lobby];
         connection.lobby = server.baseLobby;
         connection.lobby.onEnterLobby(connection);
 
@@ -64,7 +64,7 @@ module.exports = class Server {
         if (connection.player.lobby === -1) {
             server.baseLobby.onLeaveLobby(connection);
         } else {
-            server.lobbys[connection.player.lobby].onLeaveLobby(connection);
+            server.rooms[connection.player.lobby].onLeaveLobby(connection);
         }
     }
 
@@ -72,32 +72,32 @@ module.exports = class Server {
         connection.socket.emit('loadBaseLobby');
     }
 
-    onCreateGameLobby(connection=Connection, data) {
+    onCreateGameRoom(connection=Connection, data) {
         let server = this;
-        let gamelobby = new GameLobby(server.lobbys.length, new GameLobbySettings(data.gameMode, data.maxPlayers));
+        let gameRoom = new GameRoom(server.rooms.length, new GameRoomSettings(data.gameMode, data.maxPlayers));
 
-        server.lobbys.push(gamelobby);
-        server.onSwitchGameLobby(connection, gamelobby.id);
+        server.rooms.push(gameRoom);
+        server.onSwitchGameRoom(connection, gameRoom.id);
     }
 
-    onJoinGameLobby(connection=Connection, data) {
+    onJoinGameRoom(connection=Connection, data) {
         let server = this;
-        server.onSwitchGameLobby(connection, data.id);
+        server.onSwitchGameRoom(connection, data.id);
     }
 
     // onAttemptToJoinGame(connection=Connection) {
-    //     //Look through lobbies for a gamelobby
+    //     //Look through lobbies for a gameRoom
     //     //check if joinable
     //     //if not make a new game
     //     let server = this;
     //     let lobbyFound = false;
 
-    //     let gameLobbies = server.lobbys.filter(item => {
-    //         return item instanceof GameLobby;
+    //     let gameRooms = server.rooms.filter(item => {
+    //         return item instanceof GameRoom;
     //     });
-    //     console.log('Found (' + gameLobbies.length + ') lobbies on the server');
+    //     console.log('Found (' + gameRooms.length + ') lobbies on the server');
 
-    //     gameLobbies.forEach(lobby => {
+    //     gameRooms.forEach(lobby => {
     //         if (!lobbyFound) {
     //             let canJoin = lobby.canEnterLobby(connection);
 
@@ -111,46 +111,46 @@ module.exports = class Server {
     //     //All game lobbies full or we have never created one
     //     if (!lobbyFound) {
     //         console.log('Making a new game lobby');
-    //         let gamelobby = new GameLobby(gameLobbies.length + 1, new GameLobbySettings('FFA', 2));
-    //         server.lobbys.push(gamelobby);
-    //         server.onSwitchLobby(connection, gamelobby.id);
+    //         let gameRoom = new GameRoom(gameRooms.length + 1, new GameRoomSettings('FFA', 2));
+    //         server.rooms.push(gameRoom);
+    //         server.onSwitchLobby(connection, gameRoom.id);
     //     }
     // }
 
-    // onSwitchLobby(connection=Connection, lobbyID) {
+    // onSwitchLobby(connection=Connection, roomID) {
     //     let server = this;
-    //     let lobbys = server.lobbys;
+    //     let rooms = server.rooms;
 
-    //     connection.socket.join(lobbyID); // Join the new lobby's socket channel
-    //     connection.lobby = lobbys[lobbyID];//assign reference to the new lobby
+    //     connection.socket.join(roomID); // Join the new lobby's socket channel
+    //     connection.lobby = rooms[roomID];//assign reference to the new lobby
 
-    //     lobbys[connection.player.lobby].onLeaveLobby(connection);
-    //     lobbys[lobbyID].onEnterLobby(connection);
+    //     rooms[connection.player.lobby].onLeaveLobby(connection);
+    //     rooms[roomID].onEnterLobby(connection);
     // }
 
-    onSwitchGameLobby(connection=Connection, lobbyID) {
+    onSwitchGameRoom(connection=Connection, roomID) {
         let server = this;
-        let lobbys = server.lobbys;
+        let rooms = server.rooms;
 
-        connection.socket.join(lobbyID);
-        connection.lobby = lobbys[lobbyID];
+        connection.socket.join(roomID);
+        connection.lobby = rooms[roomID];
 
         server.baseLobby.onLeaveLobby(connection);
-        lobbys[lobbyID].onEnterLobby(connection);
+        rooms[roomID].onEnterRoom(connection);
     }
 
     onSwitchTeam(connection=Connection) {
         let lobby = connection.lobby;
         let player = connection.player;
 
-        if (player.team == 'blue' && lobby.orange > 0) {
+        if (player.team == 'blue' && lobby.orange_remain > 0) {
             player.team = 'orange';
-            lobby.blue += 1;
-            lobby.orange -= 1;
-        } else if (player.team == 'orange' && lobby.blue > 0) {
+            lobby.blue_remain += 1;
+            lobby.orange_remain -= 1;
+        } else if (player.team == 'orange' && lobby.blue_remain > 0) {
             player.team = 'blue';
-            lobby.orange += 1;
-            lobby.blue -= 1;
+            lobby.orange_remain += 1;
+            lobby.blue_remain -= 1;
         }
     }
 

@@ -43,20 +43,17 @@ module.exports = class Connection {
             socket.broadcast.to(connection.lobby.id).emit('updateRotation', player);
         });
 
-
-
-
         socket.on('joinBaseLobby', function(data) {
             player.username = data['username'];
             server.onJoinBaseLobby(connection);
         });
 
-        socket.on('createGameLobby', function(data) {
-            server.onCreateGameLobby(connection, data);
+        socket.on('createGameRoom', function(data) {
+            server.onCreateGameRoom(connection, data);
         });
 
-        socket.on('joinGameLobby', function(data) {
-            server.onJoinGameLobby(connection, data);
+        socket.on('joinGameRoom', function(data) {
+            server.onJoinGameRoom(connection, data);
         });
 
         socket.on('switchTeam', function() {

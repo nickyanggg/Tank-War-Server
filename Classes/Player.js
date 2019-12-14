@@ -15,7 +15,7 @@ module.exports = class Player {
         this.respawnTicker = new Number(0);
         this.respawnTime = new Number(0);
 
-        this.tank = 1; // chosen tank id
+        this.tank = 0; // chosen tank id
         this.ready = false;
         this.team = ''; // blue or orange
     }
