@@ -139,9 +139,14 @@ module.exports = class Server {
         rooms[roomID].onEnterRoom(connection);
     }
 
-    onSwitchTeam(connection=Connection) {
+    onSwitchTeam(connection=Connection, team) {
         let lobby = connection.lobby;
         let player = connection.player;
+
+        // disallow switch team if player is ready or try to switch to the same team
+        if (player.ready || team == player.team) {
+            return;
+        }
 
         if (player.team == 'blue' && lobby.orange_remain > 0) {
             player.team = 'orange';
@@ -157,5 +162,16 @@ module.exports = class Server {
     onSwitchReady(connection=Connection) {
         let player = connection.player;
         player.ready = !player.ready;
+    }
+
+    onSwitchTank(connection=Connection, direction) {
+        let player = connection.player;
+        if (direction == "left") {
+            player.tank = (player.tank + 5) % 6;
+        } else if (direction == "right") {
+            player.tank = (player.tank + 1) % 6;
+        } else {
+            console.error("onSwitchTank: unknown direction");
+        }
     }
 }

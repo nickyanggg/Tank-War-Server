@@ -11,6 +11,9 @@ module.exports = class GameRoom extends LobbyBase {
         this.blue_remain = 3;
         this.orange_remain = 3;
         this.bullets = [];
+
+        // after all players ready, countdown 5 sec then emit start game
+        this.allReadyTimeout = undefined;
     }
 
     onUpdate() {
@@ -21,6 +24,7 @@ module.exports = class GameRoom extends LobbyBase {
             room.updateDeadPlayers();
         } else {
             room.updateGameRoom();
+            room.checkReady();
         }
     }
 
@@ -83,6 +87,31 @@ module.exports = class GameRoom extends LobbyBase {
             let socket = connection.socket;
             socket.emit('updateGameRoom', { playersData: playersData });
         });
+    }
+
+    checkReady() {
+        let allReady = true;
+        this.connections.forEach(connection => {
+            if (!connection.player.ready) {
+                allReady = false;
+            }
+        });
+
+        // if all players are ready, start a timer
+        if (allReady && this.blue_remain == this.orange_remain) {
+            if (!this.allReadyTimeout) {
+                this.allReadyTimeout = setTimeout(this.emitStartGame, 5000);
+            }
+        }
+        // else, stop the timer
+        else {
+            clearTimeout(this.allReadyTimeout);
+            this.allReadyTimeout = undefined;
+        }
+    }
+
+    emitStartGame() {
+        console.log("Game Start!");
     }
 
     updateBullets() {

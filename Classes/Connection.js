@@ -56,12 +56,16 @@ module.exports = class Connection {
             server.onJoinGameRoom(connection, data);
         });
 
-        socket.on('switchTeam', function() {
-            server.onSwitchTeam(connection);
+        socket.on('switchTeam', function(data) {
+            server.onSwitchTeam(connection, data.team);
         });
 
         socket.on('switchReady', function() {
             server.onSwitchReady(connection);
+        });
+
+        socket.on('switchTank', function(data) {
+        	server.onSwitchTank(connection, data.direction);
         });
     }
 }
