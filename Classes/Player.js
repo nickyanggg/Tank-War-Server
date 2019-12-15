@@ -5,12 +5,10 @@ module.exports = class Player {
     constructor() {
         this.username = 'Default_Player';
         this.id = shortID.generate();
-        // this.lobby = 0;
         this.lobby = -1; // Base Lobby
         this.position = new Vector2();
         this.tankRotation = new Number(0);
         this.barrelRotation = new Number(0);
-        this.health = new Number(100);
         this.isDead = false;
         this.respawnTicker = new Number(0);
         this.respawnTime = new Number(0);
@@ -18,6 +16,17 @@ module.exports = class Player {
         this.tank = 0; // chosen tank id
         this.ready = false;
         this.team = ''; // blue or orange
+
+        // player info in game
+        this.startPosition = -1;   // 0, 1, 2: blue 123; 3, 4, 5: orange 123
+        this.health = 100;
+        this.speed = 100;
+        this.mp = 100;
+        this.mpRate = 1;
+        this.bulletRate = 1;
+        this.bulletNum = 3;
+        this.passiveSkill = "default";
+        this.super = "default";
     }
 
     displayerPlayerInformation() {

@@ -2,6 +2,7 @@ let LobbyBase = require('./LobbyBase');
 let GameRoomSettings = require('./GameRoomSettings');
 let Connection = require('../Connection');
 let Bullet = require('../Bullet');
+const tankSettings = require('../tankSettings');
 
 module.exports = class GameRoom extends LobbyBase {
     constructor(id, settings=GameRoomSettings) {
@@ -13,6 +14,7 @@ module.exports = class GameRoom extends LobbyBase {
         this.bullets = [];
 
         // after all players ready, countdown 5 sec then emit start game
+        this.startGameCountDownTime = 1000;
         this.allReadyTimeout = undefined;
     }
 
@@ -20,6 +22,7 @@ module.exports = class GameRoom extends LobbyBase {
         let room = this;
 
         if (room.playing) {
+            // room.updatePlayersInfo();
             room.updateBullets();
             room.updateDeadPlayers();
         } else {
@@ -98,9 +101,12 @@ module.exports = class GameRoom extends LobbyBase {
         });
 
         // if all players are ready, start a timer
-        if (allReady && this.blue_remain == this.orange_remain) {
+        if (allReady/* && this.blue_remain == this.orange_remain*/) {
             if (!this.allReadyTimeout) {
-                this.allReadyTimeout = setTimeout(this.emitStartGame, 5000);
+                this.allReadyTimeout = setTimeout(() => {
+                    this.initPlayersInfo.bind(this)();
+                    this.emitStartGame.bind(this)();
+                }, this.startGameCountDownTime);
             }
         }
         // else, stop the timer
@@ -110,8 +116,51 @@ module.exports = class GameRoom extends LobbyBase {
         }
     }
 
+    initPlayersInfo() {
+        let blueCount = 0, orangeCount = 0;
+        this.connections.forEach(connection => {
+            let player = connection.player;
+            player.health = tankSettings[player.tank].health;
+            player.speed = tankSettings[player.tank].speed;
+            player.mp = tankSettings[player.tank].mp;
+            player.mpRate = tankSettings[player.tank].mpRate;
+            player.bulletRate = tankSettings[player.tank].bulletRate;
+            player.bulletNum = tankSettings[player.tank].bulletNum;
+            player.passiveSkill = tankSettings[player.tank].passiveSkill;
+            player.super = tankSettings[player.tank].super;
+            
+            if (player.team == "orange") {
+                player.startPosition = orangeCount + 3;  // orange: 3/4/5
+                orangeCount++;
+            } else if (player.team == "blue") {
+                player.startPosition = blueCount;
+                blueCount++;
+            } else {
+                console.error("initPlayersInfo: Undefined team");
+            }
+        });
+    }
+
     emitStartGame() {
-        console.log("Game Start!");
+        let playersData = []
+        this.connections.forEach(connection => {
+            playersData.push({
+                username: connection.player.username,
+                id: connection.player.id,
+                tank: connection.player.tank,
+                team: connection.player.team,
+                startPosition: connection.player.startPosition
+            });
+        });
+
+        this.connections.forEach(connection => {
+            let socket = connection.socket;
+            socket.emit('gameStart', { gameMode: this.settings.gameMode });
+            socket.emit('spawnPlayers', { playersData });
+        });
+
+        this.playing = true;
+        console.log(`GameRoom(${this.id}) start playing.`);
     }
 
     updateBullets() {
@@ -138,7 +187,6 @@ module.exports = class GameRoom extends LobbyBase {
                 // });
             }
         });
-
     }
 
     updateDeadPlayers() {
@@ -278,18 +326,6 @@ module.exports = class GameRoom extends LobbyBase {
             team: connection.player.team,
             ready: connection.player.ready
         }
-
-        // socket.emit('spawn', returnData); //tell myself I have spawned
-        // socket.broadcast.to(room.id).emit('spawn', returnData); // Tell others
-
-        // //Tell myself about everyone else already in the room
-        // connections.forEach(c => {
-        //     if(c.player.id != connection.player.id) {
-        //         socket.emit('spawn', {
-        //             id: c.player.id
-        //         });
-        //     }
-        // });
 
         socket.emit('spawnToGameRoom', returnData);
         socket.broadcast.to(room.id).emit('spawnToGameRoom', returnData);
