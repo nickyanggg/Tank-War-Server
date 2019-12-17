@@ -64,7 +64,7 @@ module.exports = class Server {
         if (connection.player.lobby === -1) {
             server.baseLobby.onLeaveLobby(connection);
         } else {
-            server.rooms[connection.player.lobby].onLeaveLobby(connection);
+            server.rooms[connection.player.lobby].onLeaveRoom(connection);
         }
     }
 

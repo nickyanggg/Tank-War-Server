@@ -53,7 +53,8 @@ class InGamePlayerInfo {
         return false;
     }
 
-    dealDamage(amount = Number) {
+    dealDamage(amount) {
+        console.log(this.health, amount);
         this.health = this.health - amount;
 
         if (this.health <= 0) {
@@ -127,7 +128,7 @@ module.exports = class GameRoom extends LobbyBase {
     onLeaveRoom(connection=Connection) {
         let room = this;
 
-        super.onLeaveRoom(connection);
+        super.onLeaveLobby(connection);
 
         room.removePlayer(connection);
 
@@ -195,6 +196,7 @@ module.exports = class GameRoom extends LobbyBase {
             inGamePlayerInfo.team = player.team;
             inGamePlayerInfo.fullHealth = tankSettings[player.tank].health;
             inGamePlayerInfo.health = inGamePlayerInfo.fullHealth;
+            inGamePlayerInfo.attack = tankSettings[player.tank].attack;
             inGamePlayerInfo.speed = tankSettings[player.tank].speed;
             inGamePlayerInfo.fullMp = tankSettings[player.tank].mp;
             inGamePlayerInfo.mp = inGamePlayerInfo.fullMp;
@@ -335,11 +337,14 @@ module.exports = class GameRoom extends LobbyBase {
 
                     // bullet hit a player
                     if (distance < 0.65) {
+                        console.log(this.inGamePlayersInfo);
+                        console.log(bullet.activator);
                         let isDead = playerInfo.dealDamage(this.inGamePlayersInfo[bullet.activator].attack);
                         let returnData = {
                             id: playerInfo.id,
                             health: playerInfo.health
                         };
+                        console.log(returnData);
                         c.socket.emit('setPlayerHealth', returnData);
                         c.socket.broadcast.to(room.id).emit('setPlayerHealth', returnData);
 
