@@ -1,8 +1,71 @@
-let LobbyBase = require('./LobbyBase');
-let GameRoomSettings = require('./GameRoomSettings');
-let Connection = require('../Connection');
-let Bullet = require('../Bullet');
+const LobbyBase = require('./LobbyBase');
+const GameRoomSettings = require('./GameRoomSettings');
+const Connection = require('../Connection');
+const Bullet = require('../Bullet');
+const Vector2 = require('../Vector2');
 const tankSettings = require('../tankSettings');
+
+class InGamePlayerInfo {
+    constructor() {
+        this.username = new String();
+        this.id = new String();
+        this.tank = new Number();
+        this.team = new String();
+
+        this.position = new Vector2();
+        this.tankRotation = new Number();
+        this.barrelRotation = new Number();
+        this.isDead = false;
+        this.respawnTicker = new Number();
+        this.respawnTime = new Number();
+
+        this.startPosition = new Vector2();   // 0, 1, 2: blue 123; 3, 4, 5: orange 123
+        this.fullHealth = new Number();
+        this.health = new Number();
+        this.speed = new Number();
+        this.fullMp = new Number();
+        this.mp = new Number();
+        this.mpRate = new Number();
+        this.bulletRate = new Number();
+        this.passiveSkill = new String();
+        this.super = new String();
+    }
+
+    respawnCounter() {
+        this.respawnTicker = this.respawnTicker + 1;
+
+        if (this.respawnTicker >= 10) {
+            this.respawnTicker = new Number(0);
+            this.respawnTime = this.respawnTime + 1;
+
+            if (this.respawnTime >= 3) {
+                console.log('Respawning player id: ' + this.id);
+                 this.isDead = false;
+                 this.respawnTicker = new Number(0);
+                 this.respawnTime = new Number(0);
+                 this.health = new Number(100);
+                 this.position = new Vector2(-8, 3);
+
+                 return true;
+            }
+        }
+        
+        return false;
+    }
+
+    dealDamage(amount = Number) {
+        this.health = this.health - amount;
+
+        if (this.health <= 0) {
+            this.health = 0;
+            this.isDead = true;
+            this.respawnTicker = new Number(0);
+            this.respawnTime = new Number(0);
+        }
+
+        return this.isDead;
+    }
+}
 
 module.exports = class GameRoom extends LobbyBase {
     constructor(id, settings=GameRoomSettings) {
@@ -16,13 +79,16 @@ module.exports = class GameRoom extends LobbyBase {
         // after all players ready, countdown 5 sec then emit start game
         this.startGameCountDownTime = 1000;
         this.allReadyTimeout = undefined;
+
+        // map all players id to inGamePlayerInfo
+        this.inGamePlayersInfo = {};
     }
 
     onUpdate() {
         let room = this;
 
         if (room.playing) {
-            // room.updatePlayersInfo();
+            room.updateTime();
             room.updateBullets();
             room.updateDeadPlayers();
         } else {
@@ -120,20 +186,29 @@ module.exports = class GameRoom extends LobbyBase {
         let blueCount = 0, orangeCount = 0;
         this.connections.forEach(connection => {
             let player = connection.player;
-            player.health = tankSettings[player.tank].health;
-            player.speed = tankSettings[player.tank].speed;
-            player.mp = tankSettings[player.tank].mp;
-            player.mpRate = tankSettings[player.tank].mpRate;
-            player.bulletRate = tankSettings[player.tank].bulletRate;
-            player.bulletNum = tankSettings[player.tank].bulletNum;
-            player.passiveSkill = tankSettings[player.tank].passiveSkill;
-            player.super = tankSettings[player.tank].super;
+            this.inGamePlayersInfo[player.id] = new InGamePlayerInfo();
+            let inGamePlayerInfo = this.inGamePlayersInfo[player.id];
+
+            inGamePlayerInfo.username = player.username;
+            inGamePlayerInfo.id = player.id;
+            inGamePlayerInfo.tank = player.tank;
+            inGamePlayerInfo.team = player.team;
+            inGamePlayerInfo.fullHealth = tankSettings[player.tank].health;
+            inGamePlayerInfo.health = inGamePlayerInfo.fullHealth;
+            inGamePlayerInfo.speed = tankSettings[player.tank].speed;
+            inGamePlayerInfo.fullMp = tankSettings[player.tank].mp;
+            inGamePlayerInfo.mp = inGamePlayerInfo.fullMp;
+            inGamePlayerInfo.mpRate = tankSettings[player.tank].mpRate;
+            inGamePlayerInfo.bulletRate = tankSettings[player.tank].bulletRate;
+            inGamePlayerInfo.bulletNum = tankSettings[player.tank].bulletNum;
+            inGamePlayerInfo.passiveSkill = tankSettings[player.tank].passiveSkill;
+            inGamePlayerInfo.super = tankSettings[player.tank].super;
             
             if (player.team == "orange") {
-                player.startPosition = orangeCount + 3;  // orange: 3/4/5
+                inGamePlayerInfo.startPosition = orangeCount + 3;  // orange: 3/4/5
                 orangeCount++;
             } else if (player.team == "blue") {
-                player.startPosition = blueCount;
+                inGamePlayerInfo.startPosition = blueCount;
                 blueCount++;
             } else {
                 console.error("initPlayersInfo: Undefined team");
@@ -142,25 +217,20 @@ module.exports = class GameRoom extends LobbyBase {
     }
 
     emitStartGame() {
-        let playersData = []
-        this.connections.forEach(connection => {
-            playersData.push({
-                username: connection.player.username,
-                id: connection.player.id,
-                tank: connection.player.tank,
-                team: connection.player.team,
-                startPosition: connection.player.startPosition
-            });
-        });
-
         this.connections.forEach(connection => {
             let socket = connection.socket;
             socket.emit('gameStart', { gameMode: this.settings.gameMode });
-            socket.emit('spawnPlayers', { playersData });
+            socket.emit('spawnPlayers', {
+                playersInfo: Object.values(this.inGamePlayersInfo)
+            });
         });
 
         this.playing = true;
         console.log(`GameRoom(${this.id}) start playing.`);
+    }
+
+    updateTime() {
+
     }
 
     updateBullets() {
@@ -194,17 +264,17 @@ module.exports = class GameRoom extends LobbyBase {
         let connections = room.connections;
 
         connections.forEach(connection => {
-            let player = connection.player;
+            let playerInfo = this.inGamePlayersInfo[connection.player.id];
 
-            if (player.isDead) {
-                let isRespawn = player.respawnCounter();
+            if (playerInfo.isDead) {
+                let isRespawn = playerInfo.respawnCounter();
                 if (isRespawn) {
                     let socket = connection.socket;
                     let returnData = {
-                        id: player.id,
+                        id: playerInfo.id,
                         position: {
-                            x: player.position.x,
-                            y: player.position.y
+                            x: playerInfo.position.x,
+                            y: playerInfo.position.y
                         }
                     }
 
@@ -258,22 +328,30 @@ module.exports = class GameRoom extends LobbyBase {
             let playerHit = false;
 
             room.connections.forEach(c => {
-                let player = c.player;
+                let playerInfo = this.inGamePlayersInfo[c.player.id];
 
-                if (bullet.activator != player.id) {
-                    let distance = bullet.position.Distance(player.position);
+                if (bullet.activator != playerInfo.id) {
+                    let distance = bullet.position.Distance(playerInfo.position);
 
+                    // bullet hit a player
                     if (distance < 0.65) {
-                        let isDead = player.dealDamage(50);
+                        let isDead = playerInfo.dealDamage(this.inGamePlayersInfo[bullet.activator].attack);
+                        let returnData = {
+                            id: playerInfo.id,
+                            health: playerInfo.health
+                        };
+                        c.socket.emit('setPlayerHealth', returnData);
+                        c.socket.broadcast.to(room.id).emit('setPlayerHealth', returnData);
+
                         if (isDead) {
-                            console.log('Player with id: ' + player.id + ' has died');
-                            let returnData = {
-                                id: player.id
+                            console.log('Player with id: ' + playerInfo.id + ' has died');
+                            returnData = {
+                                id: playerInfo.id
                             }
                             c.socket.emit('playerDied', returnData);
                             c.socket.broadcast.to(room.id).emit('playerDied', returnData);
                         } else {
-                            console.log('Player with id: ' + player.id + ' has (' + player.health + ') health left');
+                            console.log('Player with id: ' + playerInfo.id + ' has (' + playerInfo.health + ') health left');
                         }
                         room.despawnBullet(bullet);
                     }
