@@ -19,7 +19,7 @@ class InGamePlayerInfo {
         this.respawnTicker = new Number();
         this.respawnTime = new Number();
 
-        this.startPosition = new Vector2();   // 0, 1, 2: blue 123; 3, 4, 5: orange 123
+        this.startPosition = new Number();   // 0, 1, 2: blue 123; 3, 4, 5: orange 123
         this.fullHealth = new Number();
         this.health = new Number();
         this.speed = new Number();
@@ -43,8 +43,7 @@ class InGamePlayerInfo {
                  this.isDead = false;
                  this.respawnTicker = new Number(0);
                  this.respawnTime = new Number(0);
-                 this.health = new Number(100);
-                 this.position = new Vector2(-8, 3);
+                 this.health = new Number(this.fullHealth);
 
                  return true;
             }
@@ -128,9 +127,10 @@ module.exports = class GameRoom extends LobbyBase {
     onLeaveRoom(connection=Connection) {
         let room = this;
 
+        room.removePlayer(connection);
+
         super.onLeaveLobby(connection);
 
-        room.removePlayer(connection);
 
         //Handle unspawning any server spawned objects here
         //Example: loot, perhaps flying bullets etc
@@ -274,10 +274,7 @@ module.exports = class GameRoom extends LobbyBase {
                     let socket = connection.socket;
                     let returnData = {
                         id: playerInfo.id,
-                        position: {
-                            x: playerInfo.position.x,
-                            y: playerInfo.position.y
-                        }
+                        startPosition: playerInfo.startPosition
                     }
 
                     socket.emit('playerRespawn', returnData);
@@ -345,14 +342,11 @@ module.exports = class GameRoom extends LobbyBase {
 
                     // bullet hit a player
                     if (distance < 0.65) {
-                        console.log(this.inGamePlayersInfo);
-                        console.log(bullet.activator);
                         let isDead = playerInfo.dealDamage(this.inGamePlayersInfo[bullet.activator].attack);
                         let returnData = {
                             id: playerInfo.id,
                             health: playerInfo.health
                         };
-                        console.log(returnData);
                         c.socket.emit('setPlayerHealth', returnData);
                         c.socket.broadcast.to(room.id).emit('setPlayerHealth', returnData);
 
@@ -449,7 +443,8 @@ module.exports = class GameRoom extends LobbyBase {
         }
 
         connection.socket.broadcast.to(room.id).emit('leaveGameRoom', {
-            id: connection.player.id
+            id: connection.player.id,
+            playing: connection.lobby.playing
         });
     }
 }
