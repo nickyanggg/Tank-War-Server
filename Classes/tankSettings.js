@@ -7,7 +7,7 @@ module.exports = [
 		mp: 100,
 		mpRate: 5,
 		bulletRate: 1,
-		bulletNum: 3,
+		bulletNum: 5,
 		passiveSkill: "lifeTree",
 		super: "heal"
 	},
@@ -19,7 +19,7 @@ module.exports = [
 		mp: 100,
 		mpRate: 5,
 		bulletRate: 1,
-		bulletNum: 3,
+		bulletNum: 5,
 		passiveSkill: "resurrect",
 		super: "flamethrower"
 	},
@@ -31,7 +31,7 @@ module.exports = [
 		mp: 100,
 		mpRate: 5,
 		bulletRate: 1,
-		bulletNum: 3,
+		bulletNum: 5,
 		passiveSkill: "shield",
 		super: "sword"
 	},
@@ -43,7 +43,7 @@ module.exports = [
 		mp: 100,
 		mpRate: 5,
 		bulletRate: 1,
-		bulletNum: 3,
+		bulletNum: 5,
 		passiveSkill: "magicSteal",
 		super: "surf"
 	},
@@ -55,7 +55,7 @@ module.exports = [
 		mp: 100,
 		mpRate: 5,
 		bulletRate: 1,
-		bulletNum: 3,
+		bulletNum: 5,
 		passiveSkill: "sandstorm",
 		super: "invisible"
 	},
@@ -67,7 +67,7 @@ module.exports = [
 		mp: 100,
 		mpRate: 5,
 		bulletRate: 1,
-		bulletNum: 3,
+		bulletNum: 5,
 		passiveSkill: "ninja",
 		super: "teleport"
 	}

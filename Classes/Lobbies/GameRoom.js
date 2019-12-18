@@ -236,27 +236,27 @@ module.exports = class GameRoom extends LobbyBase {
     }
 
     updateBullets() {
-        let room = this;
-        let bullets = room.bullets;
-        let connections = room.connections;
+        let bullets = this.bullets;
+        let connections = this.connections;
 
+        // update each player's bulletNum
+        connections.forEach(connection => {
+            const prev = this.inGamePlayersInfo[connection.player.id].bulletNum;
+            const increment = this.settings.bulletIncrementPerFrame 
+                              * this.inGamePlayersInfo[connection.player.id].bulletRate;
+            const bulletNum = prev + increment > this.settings.maxBulletNum
+                              ? this.settings.maxBulletNum : prev + increment;
+            this.inGamePlayersInfo[connection.player.id].bulletNum = bulletNum;
+
+            connection.socket.emit('updateBulletNum', { bulletNum });
+        });
+
+        // update bullet positions
         bullets.forEach(bullet => {
             let isDestroyed = bullet.onUpdate();
 
             if (isDestroyed) {
-                room.despawnBullet(bullet);
-            } else {
-                // let returnData = {
-                //     id: bullet.id,
-                //     position: {
-                //         x: bullet.position.x,
-                //         y: bullet.position.y
-                //     }
-                // }
-
-                // connections.forEach(connection => {
-                //     connection.socket.emit('updatePosition', returnData);
-                // });
+                this.despawnBullet(bullet);
             }
         });
     }
@@ -290,6 +290,11 @@ module.exports = class GameRoom extends LobbyBase {
     onFireBullet(connection=Connection, data) {
         let room = this;
 
+        // if bulletNum < 1, cannot fire bullet
+        if (room.inGamePlayersInfo[connection.player.id].bulletNum < 1) {
+            return;
+        }
+
         let bullet = new Bullet();
         bullet.name = 'Bullet';
         bullet.activator = data.activator;
@@ -317,6 +322,9 @@ module.exports = class GameRoom extends LobbyBase {
 
         connection.socket.emit('serverSpawn', returnData);
         connection.socket.broadcast.to(room.id).emit('serverSpawn', returnData); //Only broadcast to those in the same room as us
+
+        // minus bullet num
+        room.inGamePlayersInfo[connection.player.id].bulletNum -= 1;
     }
 
     onCollisionDestroy(connection=Connection, data) {
