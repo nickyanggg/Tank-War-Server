@@ -2,6 +2,7 @@ const LobbyBase = require('./LobbyBase');
 const GameRoomSettings = require('./GameRoomSettings');
 const Connection = require('../Connection');
 const Bullet = require('../Bullet');
+const SafeBox = require('../SafeBox');
 const Vector2 = require('../Vector2');
 const tankSettings = require('../tankSettings');
 
@@ -82,6 +83,9 @@ module.exports = class GameRoom extends LobbyBase {
 
         // map all players id to inGamePlayerInfo
         this.inGamePlayersInfo = {};
+
+        this.blueSafeBox = undefined;
+        this.orangeSafeBox = undefined;
     }
 
     onUpdate() {
@@ -218,6 +222,47 @@ module.exports = class GameRoom extends LobbyBase {
         });
     }
 
+    initSafeBoxes(connection=Connection, data) {
+        this.blueSafeBox = new SafeBox({
+            health: this.settings.safeBoxHealth,
+            team: "blue",
+            position: {
+                x: data.bluex,
+                y: data.bluey
+            }
+        });
+        this.orangeSafeBox = new SafeBox({
+            health: this.settings.safeBoxHealth,
+            team: "orange",
+            position: {
+                x: data.orangex,
+                y: data.orangey
+            }
+        });
+
+        // spawn blue and orange safe boxes
+        let returnData = {
+            name: this.blueSafeBox.name,
+            id: this.blueSafeBox.id,
+            team: this.blueSafeBox.team,
+            position: {
+                x: this.blueSafeBox.position.x,
+                y: this.blueSafeBox.position.y
+            }
+        }
+        connection.socket.emit('spawnGameObject', returnData);
+        returnData = {
+            name: this.orangeSafeBox.name,
+            id: this.orangeSafeBox.id,
+            team: this.orangeSafeBox.team,
+            position: {
+                x: this.orangeSafeBox.position.x,
+                y: this.orangeSafeBox.position.y
+            }
+        }
+        connection.socket.emit('spawnGameObject', returnData);
+    }
+
     emitStartGame() {
         this.connections.forEach(connection => {
             let socket = connection.socket;
@@ -317,8 +362,8 @@ module.exports = class GameRoom extends LobbyBase {
             speed: bullet.speed
         }
 
-        connection.socket.emit('serverSpawn', returnData);
-        connection.socket.broadcast.to(room.id).emit('serverSpawn', returnData); //Only broadcast to those in the same room as us
+        connection.socket.emit('spawnGameObject', returnData);
+        connection.socket.broadcast.to(room.id).emit('spawnGameObject', returnData); //Only broadcast to those in the same room as us
 
         // minus bullet num
         room.inGamePlayersInfo[connection.player.id].bulletNum -= 1;
@@ -387,7 +432,7 @@ module.exports = class GameRoom extends LobbyBase {
 
             //Send remove bullet command to players
             connections.forEach(connection => {
-                connection.socket.emit('serverUnspawn', returnData);
+                connection.socket.emit('unspawnGameObject', returnData);
             });
         }
     }

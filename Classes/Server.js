@@ -85,49 +85,6 @@ module.exports = class Server {
         server.onSwitchGameRoom(connection, data.id);
     }
 
-    // onAttemptToJoinGame(connection=Connection) {
-    //     //Look through lobbies for a gameRoom
-    //     //check if joinable
-    //     //if not make a new game
-    //     let server = this;
-    //     let lobbyFound = false;
-
-    //     let gameRooms = server.rooms.filter(item => {
-    //         return item instanceof GameRoom;
-    //     });
-    //     console.log('Found (' + gameRooms.length + ') lobbies on the server');
-
-    //     gameRooms.forEach(lobby => {
-    //         if (!lobbyFound) {
-    //             let canJoin = lobby.canEnterLobby(connection);
-
-    //             if (canJoin) {
-    //                 lobbyFound = true;
-    //                 server.onSwitchLobby(connection, lobby.id);
-    //             }
-    //         }
-    //     });
-
-    //     //All game lobbies full or we have never created one
-    //     if (!lobbyFound) {
-    //         console.log('Making a new game lobby');
-    //         let gameRoom = new GameRoom(gameRooms.length + 1, new GameRoomSettings('FFA', 2));
-    //         server.rooms.push(gameRoom);
-    //         server.onSwitchLobby(connection, gameRoom.id);
-    //     }
-    // }
-
-    // onSwitchLobby(connection=Connection, roomID) {
-    //     let server = this;
-    //     let rooms = server.rooms;
-
-    //     connection.socket.join(roomID); // Join the new lobby's socket channel
-    //     connection.lobby = rooms[roomID];//assign reference to the new lobby
-
-    //     rooms[connection.player.lobby].onLeaveLobby(connection);
-    //     rooms[roomID].onEnterLobby(connection);
-    // }
-
     onSwitchGameRoom(connection=Connection, roomID) {
         let server = this;
         let rooms = server.rooms;
@@ -173,5 +130,9 @@ module.exports = class Server {
         } else {
             console.error("onSwitchTank: unknown direction");
         }
+    }
+
+    onInitSafeBoxes(connection=Connection, data) {
+        connection.lobby.initSafeBoxes(connection, data);
     }
 }

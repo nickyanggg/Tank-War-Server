@@ -69,5 +69,9 @@ module.exports = class Connection {
         socket.on('switchTank', function(data) {
         	server.onSwitchTank(connection, data.direction);
         });
+
+        socket.on('initSafeBoxes', function(data) {
+        	server.onInitSafeBoxes(connection, data);
+        });
     }
 }
