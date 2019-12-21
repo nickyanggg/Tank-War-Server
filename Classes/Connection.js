@@ -26,7 +26,9 @@ module.exports = class Connection {
         });
 
         socket.on('collisionDestroy', function(data) {
-            connection.lobby.onCollisionDestroy(connection, data);
+            if (connection.lobby.playing) {
+                connection.lobby.onCollisionDestroy(connection, data);
+            }
         });
 
         socket.on('updatePosition', function(data) {

@@ -397,10 +397,11 @@ module.exports = class GameRoom extends LobbyBase {
 
                 case "SafeBox":
                     const activatorInfo = room.inGamePlayersInfo[bullet.activator];
-                    let winTeam = "";
-                    if (activatorInfo.team == "blue") {
+                    let explodeSafeBoxID = "";
+                    // if I am blue team, and I want to hit orange team's safe box...
+                    if (activatorInfo.team == "blue" && room.orangeSafeBox.id == data.hitObjectID) {
                         if (room.orangeSafeBox.dealDamage(activatorInfo.attack)) {
-                            winTeam += "b";
+                            explodeSafeBoxID = room.orangeSafeBox.id;
                         }
                         returnData = {
                             team: "orange",
@@ -408,9 +409,9 @@ module.exports = class GameRoom extends LobbyBase {
                             fullHealth: room.orangeSafeBox.fullHealth
                         };
                     }
-                    else if (activatorInfo.team == "orange") {
+                    else if (activatorInfo.team == "orange" && room.blueSafeBox.id == data.hitObjectID) {
                         if (room.blueSafeBox.dealDamage(activatorInfo.attack)) {
-                            winTeam += "o";
+                            explodeSafeBoxID = room.blueSafeBox.id
                         }
                         returnData = {
                             team: "blue",
@@ -419,13 +420,20 @@ module.exports = class GameRoom extends LobbyBase {
                         };
                     }
                     else {
-                        console.error("undefined activator team");
+                        break;
                     }
                     room.connections.forEach(c => c.socket.emit('setSafeBoxHealth', returnData));
-
                     // game over
-                    if (winTeam) {
-                        
+                    if (explodeSafeBoxID) {
+                        this.playing = false;
+
+                        console.log(`SafeBox: "${explodeSafeBoxID}" exploded`);
+                        room.connections.forEach(c => c.socket.emit('safeBoxExplode', { explodeSafeBoxID: explodeSafeBoxID }));
+                        setTimeout((() => {
+                            console.log(`Game room: ${this.id} game over.`);
+                            this.connections.forEach(c => c.socket.emit('gameOver', { winTeam: activatorInfo.team }));
+                            this.inGamePlayersInfo = {};
+                        }).bind(this), 5000);
                     }
 
                     break;

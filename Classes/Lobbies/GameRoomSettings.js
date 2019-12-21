@@ -4,6 +4,6 @@ module.exports = class GameRoomSettings {
         this.maxPlayers = maxPlayers;
         this.bulletIncrementPerFrame = 0.03;
         this.maxBulletNum = 5;
-        this.safeBoxHealth = this.gameMode == "Heist" ? 5000 : undefined;
+        this.safeBoxHealth = this.gameMode == "Heist" ? 300 : undefined;
     }
 }

@@ -14,7 +14,6 @@ module.exports = class SafeBox extends ServerObject {
     
     dealDamage(amount) {
         this.health = this.health - amount;
-
         if (this.health <= 0) {
             this.health = 0;
             this.isDead = true;
