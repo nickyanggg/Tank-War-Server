@@ -54,7 +54,6 @@ class InGamePlayerInfo {
     }
 
     dealDamage(amount) {
-        console.log(this.health, amount);
         this.health = this.health - amount;
 
         if (this.health <= 0) {
@@ -373,46 +372,69 @@ module.exports = class GameRoom extends LobbyBase {
         let room = this;
 
         let returnBullets = room.bullets.filter(bullet => {
-            return bullet.id == data.id
+            return bullet.id == data.bulletID;
         });
 
         returnBullets.forEach(bullet => {
-            let playerHit = false;
-
-            room.connections.forEach(c => {
-                let playerInfo = this.inGamePlayersInfo[c.player.id];
-
-                if (bullet.activator != playerInfo.id) {
-                    let distance = bullet.position.Distance(playerInfo.position);
-
-                    // bullet hit a player
-                    if (distance < 0.65) {
-                        let isDead = playerInfo.dealDamage(this.inGamePlayersInfo[bullet.activator].attack);
-                        let returnData = {
-                            id: playerInfo.id,
-                            health: playerInfo.health
-                        };
-                        c.socket.emit('setPlayerHealth', returnData);
-                        c.socket.broadcast.to(room.id).emit('setPlayerHealth', returnData);
-
-                        if (isDead) {
-                            console.log('Player with id: ' + playerInfo.id + ' has died');
-                            returnData = {
-                                id: playerInfo.id
-                            }
-                            c.socket.emit('playerDied', returnData);
-                            c.socket.broadcast.to(room.id).emit('playerDied', returnData);
-                        } else {
-                            console.log('Player with id: ' + playerInfo.id + ' has (' + playerInfo.health + ') health left');
-                        }
-                        room.despawnBullet(bullet);
+            let returnData;
+            switch (data.hitObjectType) {
+                case "Tank":
+                    const playerInfo = room.inGamePlayersInfo[data.hitObjectID];
+                    const isDead = playerInfo.dealDamage(room.inGamePlayersInfo[bullet.activator].attack);
+                    returnData = {
+                        id: playerInfo.id,
+                        health: playerInfo.health
+                    };
+                    room.connections.forEach(c => c.socket.emit('setPlayerHealth', returnData));
+                    if (isDead) {
+                        console.log('Player with id: ' + playerInfo.id + ' has died');
+                        returnData = { id: playerInfo.id };
+                        room.connections.forEach(c => c.socket.emit('playerDied', returnData));
+                    } else {
+                        console.log('Player with id: ' + playerInfo.id + ' has (' + playerInfo.health + ') health left');
                     }
-                }
-            });
+                    break;
 
-            if (!playerHit) {
-                bullet.isDestroyed = true;
+                case "SafeBox":
+                    const activatorInfo = room.inGamePlayersInfo[bullet.activator];
+                    let winTeam = "";
+                    if (activatorInfo.team == "blue") {
+                        if (room.orangeSafeBox.dealDamage(activatorInfo.attack)) {
+                            winTeam += "b";
+                        }
+                        returnData = {
+                            team: "orange",
+                            health: room.orangeSafeBox.health,
+                            fullHealth: room.orangeSafeBox.fullHealth
+                        };
+                    }
+                    else if (activatorInfo.team == "orange") {
+                        if (room.blueSafeBox.dealDamage(activatorInfo.attack)) {
+                            winTeam += "o";
+                        }
+                        returnData = {
+                            team: "blue",
+                            health: room.blueSafeBox.health,
+                            fullHealth: room.blueSafeBox.fullHealth
+                        };
+                    }
+                    else {
+                        console.error("undefined activator team");
+                    }
+                    room.connections.forEach(c => c.socket.emit('setSafeBoxHealth', returnData));
+
+                    // game over
+                    if (winTeam) {
+                        
+                    }
+
+                    break;
+                
+                // other bullets or wall
+                default:
+                    break;
             }
+            room.despawnBullet(bullet);
         });        
     }
 
@@ -476,10 +498,6 @@ module.exports = class GameRoom extends LobbyBase {
     removePlayer(connection=Connection) {
         let room = this;
         let player = connection.player;
-
-        // connection.socket.broadcast.to(room.id).emit('disconnected', {
-        //     id: connection.player.id
-        // });
 
         if (player.team == 'blue') {
             room.blue_remain += 1;
