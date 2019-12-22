@@ -431,9 +431,9 @@ module.exports = class GameRoom extends LobbyBase {
                         console.log(`SafeBox: "${explodeSafeBoxID}" exploded`);
                         room.connections.forEach(c => c.socket.emit('safeBoxExplode', { explodeSafeBoxID: explodeSafeBoxID }));
                         setTimeout((() => {
-                            console.log(`Game room: ${this.id} game over.`);
+                            console.log(`Game room: ${this.id} game over. Winner: ${activatorInfo.team}`);
                             this.connections.forEach(c => c.socket.emit('gameOver', { winTeam: activatorInfo.team }));
-                            this.inGamePlayersInfo = {};
+                            this.cleanUpPlayingGameRoom();
                         }).bind(this), 5000);
                     }
 
@@ -518,5 +518,12 @@ module.exports = class GameRoom extends LobbyBase {
             id: connection.player.id,
             playing: connection.lobby.playing
         });
+    }
+
+    cleanUpPlayingGameRoom() {
+        this.inGamePlayersInfo = {};
+        this.blueSafeBox = undefined;
+        this.orangeSafeBox = undefined;
+        this.bullets = [];
     }
 }
