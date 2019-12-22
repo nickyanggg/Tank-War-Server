@@ -26,7 +26,7 @@ module.exports = class Connection {
         });
 
         socket.on('collisionDestroy', function(data) {
-            if (connection.lobby.playing) {
+            if (!connection.lobby.gameOver) {
                 connection.lobby.onCollisionDestroy(connection, data);
             }
         });
@@ -74,6 +74,10 @@ module.exports = class Connection {
 
         socket.on('initSafeBoxes', function(data) {
         	server.onInitSafeBoxes(connection, data);
+        });
+
+        socket.on('finishPlaying', function() {
+            connection.lobby.playing = false;
         });
     }
 }

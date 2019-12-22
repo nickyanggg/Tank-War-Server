@@ -71,7 +71,8 @@ module.exports = class GameRoom extends LobbyBase {
     constructor(id, settings=GameRoomSettings) {
         super(id);
         this.settings = settings;
-        this.playing = false;
+        this.playing = false;   // from game start to back to game room
+        this.gameOver = true;  // from game start to safe box explode
         this.blue_remain = 3;
         this.orange_remain = 3;
         this.bullets = [];
@@ -90,7 +91,7 @@ module.exports = class GameRoom extends LobbyBase {
     onUpdate() {
         let room = this;
 
-        if (room.playing) {
+        if (!room.gameOver) {
             room.updateTime();
             room.updateBullets();
             room.updateDeadPlayers();
@@ -279,6 +280,7 @@ module.exports = class GameRoom extends LobbyBase {
         });
 
         this.playing = true;
+        this.gameOver = false;
         console.log(`GameRoom(${this.id}) start playing.`);
     }
 
@@ -433,7 +435,7 @@ module.exports = class GameRoom extends LobbyBase {
                     room.connections.forEach(c => c.socket.emit('setSafeBoxHealth', returnData));
                     // game over
                     if (explodeSafeBoxID) {
-                        this.playing = false;
+                        this.gameOver = true;
 
                         console.log(`SafeBox: "${explodeSafeBoxID}" exploded`);
                         room.connections.forEach(c => c.socket.emit('safeBoxExplode', { explodeSafeBoxID: explodeSafeBoxID }));
