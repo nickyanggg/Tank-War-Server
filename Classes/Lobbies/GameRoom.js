@@ -174,6 +174,7 @@ module.exports = class GameRoom extends LobbyBase {
         if (allReady/* && this.blue_remain == this.orange_remain*/) {
             if (!this.allReadyTimeout) {
                 this.allReadyTimeout = setTimeout(() => {
+                    this.resetReady.bind(this)();
                     this.initPlayersInfo.bind(this)();
                     this.emitStartGame.bind(this)();
                 }, this.startGameCountDownTime);
@@ -184,6 +185,12 @@ module.exports = class GameRoom extends LobbyBase {
             clearTimeout(this.allReadyTimeout);
             this.allReadyTimeout = undefined;
         }
+    }
+
+    resetReady() {
+        this.connections.forEach(c => {
+            c.player.ready = false;
+        });
     }
 
     initPlayersInfo() {
@@ -438,7 +445,7 @@ module.exports = class GameRoom extends LobbyBase {
                     }
 
                     break;
-                
+
                 // other bullets or wall
                 default:
                     break;
