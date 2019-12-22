@@ -133,6 +133,10 @@ module.exports = class Server {
     }
 
     onInitSafeBoxes(connection=Connection, data) {
-        connection.lobby.initSafeBoxes(connection, data);
+        // multiple clients would request to init safe boxes, however only the first one could succeed
+        // to prevent overriding safeBoxID
+        if (!connection.lobby.blueSafeBox) {
+            connection.lobby.initSafeBoxes(connection, data);
+        }
     }
 }

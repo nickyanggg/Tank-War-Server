@@ -249,7 +249,7 @@ module.exports = class GameRoom extends LobbyBase {
                 y: this.blueSafeBox.position.y
             }
         }
-        connection.socket.emit('spawnGameObject', returnData);
+        this.connections.forEach(c => c.socket.emit('spawnGameObject', returnData));
         returnData = {
             name: this.orangeSafeBox.name,
             id: this.orangeSafeBox.id,
@@ -259,7 +259,7 @@ module.exports = class GameRoom extends LobbyBase {
                 y: this.orangeSafeBox.position.y
             }
         }
-        connection.socket.emit('spawnGameObject', returnData);
+        this.connections.forEach(c => c.socket.emit('spawnGameObject', returnData));
     }
 
     emitStartGame() {
@@ -398,6 +398,7 @@ module.exports = class GameRoom extends LobbyBase {
                 case "SafeBox":
                     const activatorInfo = room.inGamePlayersInfo[bullet.activator];
                     let explodeSafeBoxID = "";
+
                     // if I am blue team, and I want to hit orange team's safe box...
                     if (activatorInfo.team == "blue" && room.orangeSafeBox.id == data.hitObjectID) {
                         if (room.orangeSafeBox.dealDamage(activatorInfo.attack)) {

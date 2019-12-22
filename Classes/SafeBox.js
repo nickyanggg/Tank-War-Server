@@ -13,6 +13,8 @@ module.exports = class SafeBox extends ServerObject {
     }
     
     dealDamage(amount) {
+        console.log(`Dealing ${amount} damage to safebox: ${this.team}`);
+
         this.health = this.health - amount;
         if (this.health <= 0) {
             this.health = 0;
