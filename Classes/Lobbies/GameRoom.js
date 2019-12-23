@@ -1,3 +1,4 @@
+const shortID = require('shortid');
 const LobbyBase = require('./LobbyBase');
 const GameRoomSettings = require('./GameRoomSettings');
 const Connection = require('../Connection');
@@ -30,6 +31,7 @@ class InGamePlayerInfo {
         this.bulletRate = new Number();
         this.passiveSkill = new String();
         this.super = new String();
+        this.lightShield = false;
     }
 
     respawnCounter() {
@@ -39,7 +41,7 @@ class InGamePlayerInfo {
             this.respawnTicker = new Number(0);
             this.respawnTime = this.respawnTime + 1;
 
-            if (this.respawnTime >= 3) {
+            if (this.respawnTime >= 8) {
                 console.log('Respawning player id: ' + this.id);
                  this.isDead = false;
                  this.respawnTicker = new Number(0);
@@ -54,6 +56,9 @@ class InGamePlayerInfo {
     }
 
     dealDamage(amount) {
+        if (this.lightShield) {
+            amount = amount * 0.3;
+        }
         this.health = this.health - amount;
 
         if (this.health <= 0) {
@@ -64,6 +69,15 @@ class InGamePlayerInfo {
         }
 
         return this.isDead;
+    }
+
+    heal(amount) {
+        if (!this.isDead) {
+            this.health = this.health + amount;
+            if (this.health > this.fullHealth) {
+                this.health = this.fullHealth
+            }
+        }
     }
 }
 
@@ -93,6 +107,7 @@ module.exports = class GameRoom extends LobbyBase {
 
         if (!room.gameOver) {
             room.updateTime();
+            room.updateMp();
             room.updateBullets();
             room.updateDeadPlayers();
         } else {
@@ -210,7 +225,7 @@ module.exports = class GameRoom extends LobbyBase {
             inGamePlayerInfo.attack = tankSettings[player.tank].attack;
             inGamePlayerInfo.speed = tankSettings[player.tank].speed;
             inGamePlayerInfo.fullMp = tankSettings[player.tank].mp;
-            inGamePlayerInfo.mp = inGamePlayerInfo.fullMp;
+            inGamePlayerInfo.mp = 0;
             inGamePlayerInfo.mpRate = tankSettings[player.tank].mpRate;
             inGamePlayerInfo.bulletRate = tankSettings[player.tank].bulletRate;
             inGamePlayerInfo.bulletNum = tankSettings[player.tank].bulletNum;
@@ -286,6 +301,19 @@ module.exports = class GameRoom extends LobbyBase {
 
     updateTime() {
 
+    }
+
+    updateMp() {
+        this.connections.forEach(connection => {
+            const prev = this.inGamePlayersInfo[connection.player.id].mp;
+            const increment = this.settings.mpIncrementPerFrame 
+                              * this.inGamePlayersInfo[connection.player.id].mpRate;
+            const fullMp = this.inGamePlayersInfo[connection.player.id].fullMp;
+            const mp = prev + increment > fullMp ? fullMp : prev + increment;
+            this.inGamePlayersInfo[connection.player.id].mp = mp;
+
+            connection.socket.emit('updateMp', { fullMp, mp });
+        });
     }
 
     updateBullets() {
@@ -377,6 +405,76 @@ module.exports = class GameRoom extends LobbyBase {
         room.inGamePlayersInfo[connection.player.id].bulletNum -= 1;
     }
 
+    damagePlayerOrSafeBox(hitObjectType, hitObjectID, activator, amount) {
+        let returnData;
+        switch (hitObjectType) {
+            case "Tank":
+                const playerInfo = this.inGamePlayersInfo[hitObjectID];
+                const isDead = playerInfo.dealDamage(amount);
+                returnData = {
+                    id: playerInfo.id,
+                    health: playerInfo.health
+                };
+                this.connections.forEach(c => c.socket.emit('setPlayerHealth', returnData));
+                if (isDead) {
+                    console.log('Player with id: ' + playerInfo.id + ' has died');
+                    returnData = { id: playerInfo.id };
+                    this.connections.forEach(c => c.socket.emit('playerDied', returnData));
+                } else {
+                    console.log('Player with id: ' + playerInfo.id + ' has (' + playerInfo.health + ') health left');
+                }
+                break;
+
+            case "SafeBox":
+                const activatorInfo = this.inGamePlayersInfo[activator];
+                let explodeSafeBoxID = "";
+
+                // if I am blue team, and I want to hit orange team's safe box...
+                if (activatorInfo.team == "blue" && this.orangeSafeBox.id == hitObjectID) {
+                    if (this.orangeSafeBox.dealDamage(amount)) {
+                        explodeSafeBoxID = this.orangeSafeBox.id;
+                    }
+                    returnData = {
+                        team: "orange",
+                        health: this.orangeSafeBox.health,
+                        fullHealth: this.orangeSafeBox.fullHealth
+                    };
+                }
+                else if (activatorInfo.team == "orange" && this.blueSafeBox.id == hitObjectID) {
+                    if (this.blueSafeBox.dealDamage(amount)) {
+                        explodeSafeBoxID = this.blueSafeBox.id
+                    }
+                    returnData = {
+                        team: "blue",
+                        health: this.blueSafeBox.health,
+                        fullHealth: this.blueSafeBox.fullHealth
+                    };
+                }
+                else {
+                    break;
+                }
+                this.connections.forEach(c => c.socket.emit('setSafeBoxHealth', returnData));
+                // game over
+                if (explodeSafeBoxID) {
+                    this.gameOver = true;
+
+                    console.log(`SafeBox: "${explodeSafeBoxID}" exploded`);
+                    this.connections.forEach(c => c.socket.emit('safeBoxExplode', { explodeSafeBoxID: explodeSafeBoxID }));
+                    setTimeout((() => {
+                        console.log(`Game room: ${this.id} game over. Winner: ${activatorInfo.team}`);
+                        this.connections.forEach(c => c.socket.emit('gameOver', { winTeam: activatorInfo.team }));
+                        this.cleanUpPlayingGameRoom();
+                    }).bind(this), 5000);
+                }
+
+                break;
+
+            // other bullets or wall
+            default:
+                break;
+        }
+    }
+
     onCollisionDestroy(connection=Connection, data) {
         let room = this;
 
@@ -385,75 +483,14 @@ module.exports = class GameRoom extends LobbyBase {
         });
 
         returnBullets.forEach(bullet => {
-            let returnData;
-            switch (data.hitObjectType) {
-                case "Tank":
-                    const playerInfo = room.inGamePlayersInfo[data.hitObjectID];
-                    const isDead = playerInfo.dealDamage(room.inGamePlayersInfo[bullet.activator].attack);
-                    returnData = {
-                        id: playerInfo.id,
-                        health: playerInfo.health
-                    };
-                    room.connections.forEach(c => c.socket.emit('setPlayerHealth', returnData));
-                    if (isDead) {
-                        console.log('Player with id: ' + playerInfo.id + ' has died');
-                        returnData = { id: playerInfo.id };
-                        room.connections.forEach(c => c.socket.emit('playerDied', returnData));
-                    } else {
-                        console.log('Player with id: ' + playerInfo.id + ' has (' + playerInfo.health + ') health left');
-                    }
-                    break;
-
-                case "SafeBox":
-                    const activatorInfo = room.inGamePlayersInfo[bullet.activator];
-                    let explodeSafeBoxID = "";
-
-                    // if I am blue team, and I want to hit orange team's safe box...
-                    if (activatorInfo.team == "blue" && room.orangeSafeBox.id == data.hitObjectID) {
-                        if (room.orangeSafeBox.dealDamage(activatorInfo.attack)) {
-                            explodeSafeBoxID = room.orangeSafeBox.id;
-                        }
-                        returnData = {
-                            team: "orange",
-                            health: room.orangeSafeBox.health,
-                            fullHealth: room.orangeSafeBox.fullHealth
-                        };
-                    }
-                    else if (activatorInfo.team == "orange" && room.blueSafeBox.id == data.hitObjectID) {
-                        if (room.blueSafeBox.dealDamage(activatorInfo.attack)) {
-                            explodeSafeBoxID = room.blueSafeBox.id
-                        }
-                        returnData = {
-                            team: "blue",
-                            health: room.blueSafeBox.health,
-                            fullHealth: room.blueSafeBox.fullHealth
-                        };
-                    }
-                    else {
-                        break;
-                    }
-                    room.connections.forEach(c => c.socket.emit('setSafeBoxHealth', returnData));
-                    // game over
-                    if (explodeSafeBoxID) {
-                        this.gameOver = true;
-
-                        console.log(`SafeBox: "${explodeSafeBoxID}" exploded`);
-                        room.connections.forEach(c => c.socket.emit('safeBoxExplode', { explodeSafeBoxID: explodeSafeBoxID }));
-                        setTimeout((() => {
-                            console.log(`Game room: ${this.id} game over. Winner: ${activatorInfo.team}`);
-                            this.connections.forEach(c => c.socket.emit('gameOver', { winTeam: activatorInfo.team }));
-                            this.cleanUpPlayingGameRoom();
-                        }).bind(this), 5000);
-                    }
-
-                    break;
-
-                // other bullets or wall
-                default:
-                    break;
-            }
+            this.damagePlayerOrSafeBox(data.hitObjectType, data.hitObjectID, bullet.activator
+                                  , this.inGamePlayersInfo[bullet.activator].attack);
             room.despawnBullet(bullet);
         });        
+    }
+
+    onFireBallCollision(connection=Connection, data) {
+        this.damagePlayerOrSafeBox(data.hitObjectType, data.hitObjectID, data.activator, 350);
     }
 
     despawnBullet(bullet=Bullet) {
@@ -534,5 +571,105 @@ module.exports = class GameRoom extends LobbyBase {
         this.blueSafeBox = undefined;
         this.orangeSafeBox = undefined;
         this.bullets = [];
+    }
+
+    onUseSuper(connection=Connection, id) {
+        console.log(`Client: ${id} wants to cast super`);
+        let returnData = {
+            id,
+            team: this.inGamePlayersInfo[id].team,
+            super: this.inGamePlayersInfo[id].super
+        };
+        connection.socket.emit('useSuper', returnData);
+        connection.socket.broadcast.to(this.id).emit('useSuper', returnData);
+
+        switch (this.inGamePlayersInfo[id].super) {
+            case "freeze":
+                // handled by client
+                break;
+
+            case "lifeTree":
+                let count = 0;
+                const interval = setInterval(() => {
+                    if (count == 10) {
+                        clearInterval(interval);
+                    }
+                    Object.values(this.inGamePlayersInfo).forEach(p => {
+                        if (p.team == this.inGamePlayersInfo[id].team) {
+                            p.heal(30);
+                            returnData = {
+                                id: p.id,
+                                health: p.health
+                            }
+                            this.connections.forEach(c => c.socket.emit('setPlayerHealth', returnData));
+                        }
+                    });
+                    count++;
+                }, 500);
+                break;
+
+            case "lightShield":
+                this.inGamePlayersInfo[id].lightShield = true;
+                setTimeout(() => {
+                    this.inGamePlayersInfo[id].lightShield = false;
+                }, 6000);
+                break;
+
+            case "sandStorm":
+                // sandStorm effect handled by client
+                Object.values(this.inGamePlayersInfo).forEach(p => {
+                    if (p.team != this.inGamePlayersInfo[id].team) {
+                        p.speed *= 0.7;
+                        this.connections.forEach(c => {
+                            if (c.player.id == p.id) {
+                                c.socket.emit('setPlayerSpeed', { speed: p.speed });
+                                setTimeout(() => {
+                                    p.speed /= 0.7;
+                                    c.socket.emit('setPlayerSpeed', { speed: p.speed });
+                                }, 15000);
+                            }
+                        });
+                    }
+                });
+                break;
+
+            case "portal":
+                const xOffset = -2 * Math.sin(this.inGamePlayersInfo[id].tankRotation * Math.PI / 180);
+                const yOffset = 2 * Math.cos(this.inGamePlayersInfo[id].tankRotation * Math.PI / 180);
+                const portal1x = this.inGamePlayersInfo[id].position.x + xOffset;
+                const portal1y = this.inGamePlayersInfo[id].position.y + yOffset;
+                const portal2x = portal1x + 3.5 * xOffset;
+                const portal2y = portal1y + 3.5 * yOffset;
+                const portalID1 = shortID.generate();
+                const portalID2 = shortID.generate();
+
+                this.connections.forEach(c => {
+                    c.socket.emit('spawnGameObject', {
+                        id: portalID1,
+                        id2: portalID2,
+                        team: this.inGamePlayersInfo[id].team,
+                        position: { x: portal1x, y: portal1y },
+                        position2: { x: portal2x, y: portal2y },
+                        xOffset, yOffset,
+                        name: "PortalPair"
+                    });
+                });
+
+                setTimeout(() => {
+                    this.connections.forEach(c => {
+                        c.socket.emit('unspawnGameObject', { id: portalID1 });
+                        c.socket.emit('unspawnGameObject', { id: portalID2 });
+                    });
+                }, 15000);
+                break;
+
+            case "fireBall":
+                // fire ball flying handled by client
+                break;
+
+            default:
+                console.error(`undefined super ${this.inGamePlayersInfo[id].super}`);
+                break;
+        }
     }
 }

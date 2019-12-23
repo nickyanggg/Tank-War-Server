@@ -22,7 +22,15 @@ module.exports = class Connection {
         // });
 
         socket.on('fireBullet', function(data) {
-            connection.lobby.onFireBullet(connection, data);
+            if (!connection.lobby.gameOver) {
+                connection.lobby.onFireBullet(connection, data);
+            }
+        });
+
+        socket.on('useSuper', function(data) {
+            if (!connection.lobby.gameOver) {
+                connection.lobby.onUseSuper(connection, data.id);
+            }
         });
 
         socket.on('collisionDestroy', function(data) {
@@ -31,20 +39,30 @@ module.exports = class Connection {
             }
         });
 
-        socket.on('updatePosition', function(data) {
-        	const inGamePlayerInfo = connection.lobby.inGamePlayersInfo[player.id];
-            inGamePlayerInfo.position.x = data.position.x;
-            inGamePlayerInfo.position.y = data.position.y;
+        socket.on('fireBallCollision', function(data) {
+            if (!connection.lobby.gameOver) {
+                connection.lobby.onFireBallCollision(connection, data);
+            }
+        });
 
-            socket.broadcast.to(connection.lobby.id).emit('updatePosition', inGamePlayerInfo);
+        socket.on('updatePosition', function(data) {
+            if (!connection.lobby.gameOver) {
+                const inGamePlayerInfo = connection.lobby.inGamePlayersInfo[player.id];
+                inGamePlayerInfo.position.x = data.position.x;
+                inGamePlayerInfo.position.y = data.position.y;
+
+                socket.broadcast.to(connection.lobby.id).emit('updatePosition', inGamePlayerInfo);
+            }
         });
 
         socket.on('updateRotation', function(data) {
-        	const inGamePlayerInfo = connection.lobby.inGamePlayersInfo[player.id];
-            inGamePlayerInfo.tankRotation = data.tankRotation;
-            inGamePlayerInfo.barrelRotation = data.barrelRotation;
+            if (!connection.lobby.gameOver) {
+                const inGamePlayerInfo = connection.lobby.inGamePlayersInfo[player.id];
+                inGamePlayerInfo.tankRotation = data.tankRotation;
+                inGamePlayerInfo.barrelRotation = data.barrelRotation;
 
-            socket.broadcast.to(connection.lobby.id).emit('updateRotation', inGamePlayerInfo);
+                socket.broadcast.to(connection.lobby.id).emit('updateRotation', inGamePlayerInfo);
+            }
         });
 
         socket.on('joinBaseLobby', function(data) {

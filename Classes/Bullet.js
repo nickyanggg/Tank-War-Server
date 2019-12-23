@@ -5,7 +5,7 @@ module.exports = class Bullet extends ServerObject {
     constructor() {
         super();
         this.direction = new Vector2;
-        this.speed = 0.5;
+        this.speed = 0.7;
         this.isDestroyed = false;
         this.activator = '';
     }

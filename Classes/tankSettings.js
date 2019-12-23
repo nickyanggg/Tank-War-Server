@@ -2,14 +2,14 @@ module.exports = [
 	// life tank
 	{
 		health: 500,
-		attack: 100,
+		attack: 80,
 		speed: 3,
 		mp: 100,
-		mpRate: 5,
+		mpRate: 1,
 		bulletRate: 1,
 		bulletNum: 5,
-		passiveSkill: "lifeTree",
-		super: "heal"
+		passiveSkill: "heal",
+		super: "lifeTree"
 	},
 	// fire tank
 	{
@@ -17,23 +17,23 @@ module.exports = [
 		attack: 130,
 		speed: 3,
 		mp: 100,
-		mpRate: 5,
+		mpRate: 1,
 		bulletRate: 1,
 		bulletNum: 5,
 		passiveSkill: "resurrect",
-		super: "flamethrower"
+		super: "fireBall"
 	},
 	// shield tank
 	{
 		health: 600,
-		attack: 80,
+		attack: 120,
 		speed: 3,
 		mp: 100,
-		mpRate: 5,
+		mpRate: 1,
 		bulletRate: 1,
 		bulletNum: 5,
 		passiveSkill: "shield",
-		super: "sword"
+		super: "lightShield"
 	},
 	// ocean tank
 	{
@@ -41,11 +41,11 @@ module.exports = [
 		attack: 100,
 		speed: 3,
 		mp: 100,
-		mpRate: 5,
+		mpRate: 1,
 		bulletRate: 1,
 		bulletNum: 5,
 		passiveSkill: "magicSteal",
-		super: "surf"
+		super: "freeze"
 	},
 	// sand tank
 	{
@@ -53,11 +53,11 @@ module.exports = [
 		attack: 120,
 		speed: 3,
 		mp: 100,
-		mpRate: 5,
+		mpRate: 1,
 		bulletRate: 1,
 		bulletNum: 5,
-		passiveSkill: "sandstorm",
-		super: "invisible"
+		passiveSkill: "invisible",
+		super: "sandStorm"
 	},
 	// shadow tank
 	{
@@ -65,10 +65,10 @@ module.exports = [
 		attack: 120,
 		speed: 3,
 		mp: 100,
-		mpRate: 5,
+		mpRate: 1,
 		bulletRate: 1,
 		bulletNum: 5,
 		passiveSkill: "ninja",
-		super: "teleport"
+		super: "portal"
 	}
 ];
