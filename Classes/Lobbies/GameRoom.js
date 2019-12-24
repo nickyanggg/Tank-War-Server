@@ -100,6 +100,9 @@ module.exports = class GameRoom extends LobbyBase {
 
         this.blueSafeBox = undefined;
         this.orangeSafeBox = undefined;
+
+        // duration of a game, need to set to 0 when game start
+        this.duration = 0
     }
 
     onUpdate() {
@@ -297,10 +300,24 @@ module.exports = class GameRoom extends LobbyBase {
         this.playing = true;
         this.gameOver = false;
         console.log(`GameRoom(${this.id}) start playing.`);
+
+        // Start count down 3 minutes, init time
+        this.duration = 10;
+        const timeout = setInterval(() => {
+            this.duration -= 0.1;
+            if (this.duration <= 0) {
+                this.duration = 0;
+                // emit client end game and who win the game
+                // todo
+                clearInterval(timeout);
+            }
+        }, 100);
     }
 
     updateTime() {
-
+        this.connections.forEach(connection => {
+            connection.socket.emit("updateTime", { time: Math.round(this.duration) });
+        });
     }
 
     updateMp() {
@@ -580,6 +597,12 @@ module.exports = class GameRoom extends LobbyBase {
             team: this.inGamePlayersInfo[id].team,
             super: this.inGamePlayersInfo[id].super
         };
+        
+        // check if enough magic power, deal consumption of magic power
+        const amountMp = this.settings.superMp[this.inGamePlayersInfo[id].super];
+        if (amountMp > this.inGamePlayersInfo[id].mp) { return; }
+        this.inGamePlayersInfo[id].mp -= amountMp;
+
         connection.socket.emit('useSuper', returnData);
         connection.socket.broadcast.to(this.id).emit('useSuper', returnData);
 

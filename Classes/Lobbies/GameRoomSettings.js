@@ -6,5 +6,13 @@ module.exports = class GameRoomSettings {
         this.mpIncrementPerFrame = 1;  // 0.3
         this.maxBulletNum = 5;
         this.safeBoxHealth = this.gameMode == "Heist" ? 5000 : undefined;
+        this.superMp = {
+            "freeze": 100,
+            "lifeTree": 100,
+            "lightShield": 70,
+            "sandStorm": 100,
+            "portal": 100,
+            "fireBall": 80
+        }
     }
 }

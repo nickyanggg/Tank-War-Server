@@ -65,9 +65,15 @@ module.exports = class Connection {
             }
         });
 
+        // after login
         socket.on('joinBaseLobby', function(data) {
             player.username = data['username'];
             server.onJoinBaseLobby(connection);
+        });
+
+        // leave game room to base lobby
+        socket.on('switchToBaseLobby', function() {
+            server.onSwitchToBaseLobby(connection);
         });
 
         socket.on('createGameRoom', function(data) {

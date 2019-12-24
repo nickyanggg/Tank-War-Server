@@ -72,6 +72,15 @@ module.exports = class Server {
         connection.socket.emit('loadBaseLobby');
     }
 
+    onSwitchToBaseLobby(connection=Connection, id) {
+        let server = this;
+        server.rooms[connection.player.lobby].onLeaveRoom(connection);
+
+        connection.socket.join(-1);
+        connection.lobby = server.baseLobby;
+        connection.lobby.onEnterLobby(connection);
+    }
+
     onCreateGameRoom(connection=Connection, data) {
         let server = this;
         let gameRoom = new GameRoom(server.rooms.length, new GameRoomSettings(data.gameMode, data.maxPlayers));
