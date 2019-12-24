@@ -519,6 +519,7 @@ module.exports = class GameRoom extends LobbyBase {
     safeBoxExplode(explodeSafeBoxID, team) {
         this.gameOver = true;
         clearInterval(this.gameTimeout);
+        this.onSuperItemCollision();
 
         console.log(`SafeBox: "${explodeSafeBoxID}" exploded`);
         this.connections.forEach(c => c.socket.emit('safeBoxExplode', { explodeSafeBoxID }));
@@ -632,7 +633,6 @@ module.exports = class GameRoom extends LobbyBase {
         this.blueSafeBox = undefined;
         this.orangeSafeBox = undefined;
         this.bullets = [];
-        this.superItemID = undefined;
     }
 
     onUseSuper(connection=Connection, superID) {

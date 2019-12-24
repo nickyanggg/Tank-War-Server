@@ -1,8 +1,8 @@
 module.exports = [
 	// life tank
 	{
-		health: 500,
-		attack: 80,
+		health: 400,
+		attack: 100,
 		speed: 3,
 		mp: 100,
 		mpRate: 1,
@@ -13,8 +13,8 @@ module.exports = [
 	},
 	// fire tank
 	{
-		health: 400,
-		attack: 130,
+		health: 350,
+		attack: 180,
 		speed: 3,
 		mp: 100,
 		mpRate: 1,
@@ -26,8 +26,8 @@ module.exports = [
 	// shield tank
 	{
 		health: 600,
-		attack: 120,
-		speed: 3,
+		attack: 150,
+		speed: 2.5,
 		mp: 100,
 		mpRate: 1,
 		bulletRate: 1,
@@ -37,8 +37,8 @@ module.exports = [
 	},
 	// ocean tank
 	{
-		health: 450,
-		attack: 100,
+		health: 350,
+		attack: 130,
 		speed: 3,
 		mp: 100,
 		mpRate: 1,
@@ -49,8 +49,8 @@ module.exports = [
 	},
 	// sand tank
 	{
-		health: 400,
-		attack: 120,
+		health: 450,
+		attack: 150,
 		speed: 3,
 		mp: 100,
 		mpRate: 1,
@@ -61,9 +61,9 @@ module.exports = [
 	},
 	// shadow tank
 	{
-		health: 400,
-		attack: 120,
-		speed: 3,
+		health: 450,
+		attack: 160,
+		speed: 3.5,
 		mp: 100,
 		mpRate: 1,
 		bulletRate: 1,

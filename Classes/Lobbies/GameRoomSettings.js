@@ -3,16 +3,16 @@ module.exports = class GameRoomSettings {
         this.gameMode = gameMode;
         this.maxPlayers = maxPlayers;
         this.bulletIncrementPerFrame = 0.03;
-        this.mpIncrementPerFrame = 1;  // 0.3
+        this.mpIncrementPerFrame = 2;  // 0.5
         this.maxBulletNum = 5;
         this.safeBoxHealth = this.gameMode == "Heist" ? 500 : undefined;
         this.superMp = {
             "freeze": 100,
-            "lifeTree": 100,
+            "lifeTree": 60,
             "lightShield": 70,
             "sandStorm": 100,
-            "portal": 100,
-            "fireBall": 80
+            "portal": 70,
+            "fireBall": 50
         };
         this.superList = ["lifeTree", "fireBall", "lightShield", "freeze", "sandStorm", "portal"];
     }
