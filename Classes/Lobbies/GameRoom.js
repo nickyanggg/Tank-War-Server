@@ -611,7 +611,9 @@ module.exports = class GameRoom extends LobbyBase {
             case "lightShield":
                 this.inGamePlayersInfo[id].lightShield = true;
                 setTimeout(() => {
-                    this.inGamePlayersInfo[id].lightShield = false;
+                    if (!this.gameOver) {
+                        this.inGamePlayersInfo[id].lightShield = false;    
+                    }
                 }, 6000);
                 break;
 
@@ -624,8 +626,10 @@ module.exports = class GameRoom extends LobbyBase {
                             if (c.player.id == p.id) {
                                 c.socket.emit('setPlayerSpeed', { speed: p.speed });
                                 setTimeout(() => {
-                                    p.speed /= 0.7;
-                                    c.socket.emit('setPlayerSpeed', { speed: p.speed });
+                                    if (!this.gameOver) {
+                                        p.speed /= 0.7;
+                                        c.socket.emit('setPlayerSpeed', { speed: p.speed });
+                                    }
                                 }, 15000);
                             }
                         });
@@ -656,10 +660,12 @@ module.exports = class GameRoom extends LobbyBase {
                 });
 
                 setTimeout(() => {
-                    this.connections.forEach(c => {
-                        c.socket.emit('unspawnGameObject', { id: portalID1 });
-                        c.socket.emit('unspawnGameObject', { id: portalID2 });
-                    });
+                    if (!this.gameOver) {
+                        this.connections.forEach(c => {
+                            c.socket.emit('unspawnGameObject', { id: portalID1 });
+                            c.socket.emit('unspawnGameObject', { id: portalID2 });
+                        });
+                    }
                 }, 15000);
                 break;
 
