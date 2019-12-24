@@ -1,4 +1,4 @@
-let io = require('socket.io')(process.env.PORT || 52300);
+let io = require('socket.io')(process.env.PORT || 52301);
 let Server = require('./Classes/Server')
 
 console.log('Server has started');

@@ -103,6 +103,7 @@ module.exports = class GameRoom extends LobbyBase {
 
         // duration of a game, need to set to 0 when game start
         this.duration = 0;
+        this.gameTimeout = undefined;
     }
 
     onUpdate() {
@@ -303,7 +304,7 @@ module.exports = class GameRoom extends LobbyBase {
 
         // Start count down 3 minutes, init time
         this.duration = 180.1;
-        const timeout = setInterval(() => {
+        this.gameTimeout = setInterval(() => {
             this.duration -= 0.1;
             if (this.duration <= 0) {
                 this.duration = 0;
@@ -313,11 +314,9 @@ module.exports = class GameRoom extends LobbyBase {
                 const winTeam = this.blueSafeBox.health > this.orangeSafeBox.health
                                 ? "blue" : "orange";
                 this.safeBoxExplode(explodeSafeBoxID, winTeam);
-                
-                clearInterval(timeout);
             }
-            // emit super item every 30 secs
-            else if (this.duration.toFixed(1) % 30 == 0) {
+            // emit super item every 10 secs
+            else if (this.duration.toFixed(1) % 10 == 0) {
                 const superID = Math.floor(Math.random() * 6);
                 console.log(`spawn super items no.${superID} to clients`);
                 this.connections.forEach(c => c.socket.emit('spawnGameObject', {
@@ -493,7 +492,7 @@ module.exports = class GameRoom extends LobbyBase {
                 this.connections.forEach(c => c.socket.emit('setSafeBoxHealth', returnData));
                 // game over
                 if (explodeSafeBoxID) {
-                    safeBoxExplode(explodeSafeBoxID, activatorInfo.team);
+                    this.safeBoxExplode(explodeSafeBoxID, activatorInfo.team);
                 }
 
                 break;
@@ -506,6 +505,7 @@ module.exports = class GameRoom extends LobbyBase {
 
     safeBoxExplode(explodeSafeBoxID, team) {
         this.gameOver = true;
+        clearInterval(this.gameTimeout);
 
         console.log(`SafeBox: "${explodeSafeBoxID}" exploded`);
         this.connections.forEach(c => c.socket.emit('safeBoxExplode', { explodeSafeBoxID }));
@@ -614,23 +614,24 @@ module.exports = class GameRoom extends LobbyBase {
         this.bullets = [];
     }
 
-    onUseSuper(connection=Connection, id) {
+    onUseSuper(connection=Connection, superID) {
+        const id = connection.player.id;
+        const team = this.inGamePlayersInfo[id].team;
+        const superString = this.settings.superList[superID];
         console.log(`Client: ${id} wants to cast super`);
         let returnData = {
-            id,
-            team: this.inGamePlayersInfo[id].team,
-            super: this.inGamePlayersInfo[id].super
+            id, team, super: superString
         };
 
         // check if enough magic power, deal consumption of magic power
-        const amountMp = this.settings.superMp[this.inGamePlayersInfo[id].super];
+        const amountMp = this.settings.superMp[superString];
         if (amountMp > this.inGamePlayersInfo[id].mp) { return; }
         this.inGamePlayersInfo[id].mp -= amountMp;
 
         connection.socket.emit('useSuper', returnData);
         connection.socket.broadcast.to(this.id).emit('useSuper', returnData);
 
-        switch (this.inGamePlayersInfo[id].super) {
+        switch (superString) {
             case "freeze":
                 // handled by client
                 break;
@@ -638,11 +639,12 @@ module.exports = class GameRoom extends LobbyBase {
             case "lifeTree":
                 let count = 0;
                 const interval = setInterval(() => {
-                    if (count == 10) {
+                    if (count == 10 || this.gameOver) {
                         clearInterval(interval);
+                        return;
                     }
                     Object.values(this.inGamePlayersInfo).forEach(p => {
-                        if (p.team == this.inGamePlayersInfo[id].team) {
+                        if (p.team == team) {
                             p.heal(30);
                             returnData = {
                                 id: p.id,
@@ -667,7 +669,7 @@ module.exports = class GameRoom extends LobbyBase {
             case "sandStorm":
                 // sandStorm effect handled by client
                 Object.values(this.inGamePlayersInfo).forEach(p => {
-                    if (p.team != this.inGamePlayersInfo[id].team) {
+                    if (p.team != team) {
                         p.speed *= 0.7;
                         this.connections.forEach(c => {
                             if (c.player.id == p.id) {
@@ -698,7 +700,7 @@ module.exports = class GameRoom extends LobbyBase {
                     c.socket.emit('spawnGameObject', {
                         id: portalID1,
                         id2: portalID2,
-                        team: this.inGamePlayersInfo[id].team,
+                        team: team,
                         position: { x: portal1x, y: portal1y },
                         position2: { x: portal2x, y: portal2y },
                         xOffset, yOffset,
@@ -721,7 +723,7 @@ module.exports = class GameRoom extends LobbyBase {
                 break;
 
             default:
-                console.error(`undefined super ${this.inGamePlayersInfo[id].super}`);
+                console.error(`undefined super ${superString}`);
                 break;
         }
     }

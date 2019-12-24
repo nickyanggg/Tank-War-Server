@@ -29,7 +29,7 @@ module.exports = class Connection {
 
         socket.on('useSuper', function(data) {
             if (!connection.lobby.gameOver) {
-                connection.lobby.onUseSuper(connection, data.id);
+                connection.lobby.onUseSuper(connection, data.superID);
             }
         });
 
