@@ -302,7 +302,7 @@ module.exports = class GameRoom extends LobbyBase {
         console.log(`GameRoom(${this.id}) start playing.`);
 
         // Start count down 3 minutes, init time
-        this.duration = 10;
+        this.duration = 180;
         const timeout = setInterval(() => {
             this.duration -= 0.1;
             if (this.duration <= 0) {
@@ -315,8 +315,12 @@ module.exports = class GameRoom extends LobbyBase {
     }
 
     updateTime() {
+        let time = Math.round(this.duration);
+        let minute = Math.floor(time/60);
+        let second = time%60;
+        let formatTime = "0" + minute.toString() + ":" + second.toString().padStart(2, '0');
         this.connections.forEach(connection => {
-            connection.socket.emit("updateTime", { time: Math.round(this.duration) });
+            connection.socket.emit("updateTime", { time: formatTime });
         });
     }
 
