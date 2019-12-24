@@ -666,7 +666,7 @@ module.exports = class GameRoom extends LobbyBase {
                     }
                     Object.values(this.inGamePlayersInfo).forEach(p => {
                         if (p.team == team) {
-                            p.heal(30);
+                            p.heal(60);
                             returnData = {
                                 id: p.id,
                                 health: p.health
