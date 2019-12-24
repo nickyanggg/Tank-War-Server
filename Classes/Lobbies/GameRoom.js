@@ -104,6 +104,9 @@ module.exports = class GameRoom extends LobbyBase {
         // duration of a game, need to set to 0 when game start
         this.duration = 0;
         this.gameTimeout = undefined;
+
+        // track id of super item on map
+        this.superItemID = undefined;
     }
 
     onUpdate() {
@@ -304,7 +307,7 @@ module.exports = class GameRoom extends LobbyBase {
 
         // Start count down 3 minutes, init time
         this.duration = 180.1;
-        this.gameTimeout = setInterval(() => {
+        this.gameTimeout = setInterval((() => {
             this.duration -= 0.1;
             if (this.duration <= 0) {
                 this.duration = 0;
@@ -317,16 +320,26 @@ module.exports = class GameRoom extends LobbyBase {
             }
             // emit super item every 10 secs
             else if (this.duration.toFixed(1) % 10 == 0) {
-                const superID = Math.floor(Math.random() * 6);
-                console.log(`spawn super items no.${superID} to clients`);
-                this.connections.forEach(c => c.socket.emit('spawnGameObject', {
-                    id: shortID.generate(),
-                    name: "Item",
-                    super: superID,
-                    position: { x: 0, y: 0 }
-                }));
+                this.emitSuperItem();
             }
-        }, 100);
+        }).bind(this), 100);
+    }
+
+    emitSuperItem() {
+        // if there's already a superItem in map, unspawn it before spawn again
+        if (this.superItemID) {
+            this.connections.forEach(c => c.socket.emit('unspawnGameObject', { id: this.superItemID }));
+            this.superItemID = undefined;
+        }
+        const superID = Math.floor(Math.random() * 6);
+        console.log(`spawn super items no.${superID} to clients`);
+        this.superItemID = shortID.generate();
+        this.connections.forEach(c => c.socket.emit('spawnGameObject', {
+            id: this.superItemID,
+            name: "Item",
+            super: superID,
+            position: { x: 0, y: 0 }
+        }));        
     }
 
     updateTime() {
@@ -534,6 +547,13 @@ module.exports = class GameRoom extends LobbyBase {
         this.damagePlayerOrSafeBox(data.hitObjectType, data.hitObjectID, data.activator, 350);
     }
 
+    onSuperItemCollision() {
+        if (this.superItemID) {
+            this.connections.forEach(c => c.socket.emit('unspawnGameObject', { id: this.superItemID }));
+            this.superItemID = undefined;
+        }
+    }
+
     despawnBullet(bullet=Bullet) {
         let room = this;
         let bullets = room.bullets;
@@ -612,6 +632,7 @@ module.exports = class GameRoom extends LobbyBase {
         this.blueSafeBox = undefined;
         this.orangeSafeBox = undefined;
         this.bullets = [];
+        this.superItemID = undefined;
     }
 
     onUseSuper(connection=Connection, superID) {

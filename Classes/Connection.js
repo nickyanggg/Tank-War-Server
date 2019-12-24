@@ -45,6 +45,12 @@ module.exports = class Connection {
             }
         });
 
+        socket.on('superItemCollision', function() {
+            if (!connection.lobby.gameOver) {
+                connection.lobby.onSuperItemCollision();
+            }
+        });
+
         socket.on('updatePosition', function(data) {
             if (!connection.lobby.gameOver) {
                 const inGamePlayerInfo = connection.lobby.inGamePlayersInfo[player.id];
