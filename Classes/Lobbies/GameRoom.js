@@ -102,7 +102,7 @@ module.exports = class GameRoom extends LobbyBase {
         this.orangeSafeBox = undefined;
 
         // duration of a game, need to set to 0 when game start
-        this.duration = 0
+        this.duration = 0;
     }
 
     onUpdate() {
@@ -190,7 +190,7 @@ module.exports = class GameRoom extends LobbyBase {
         });
 
         // if all players are ready, start a timer
-        if (allReady/* && this.blue_remain == this.orange_remain*/) {
+        if (allReady && this.connections.length != 0) {
             if (!this.allReadyTimeout) {
                 this.allReadyTimeout = setTimeout(() => {
                     this.resetReady.bind(this)();
@@ -302,14 +302,30 @@ module.exports = class GameRoom extends LobbyBase {
         console.log(`GameRoom(${this.id}) start playing.`);
 
         // Start count down 3 minutes, init time
-        this.duration = 180;
+        this.duration = 180.1;
         const timeout = setInterval(() => {
             this.duration -= 0.1;
             if (this.duration <= 0) {
                 this.duration = 0;
-                // emit client end game and who win the game
-                // todo
+                // when time's up, team with more safeBox health wins
+                const explodeSafeBoxID = this.blueSafeBox.health > this.orangeSafeBox.health
+                                         ? this.orangeSafeBox.id : this.blueSafeBox.id;
+                const winTeam = this.blueSafeBox.health > this.orangeSafeBox.health
+                                ? "blue" : "orange";
+                this.safeBoxExplode(explodeSafeBoxID, winTeam);
+                
                 clearInterval(timeout);
+            }
+            // emit super item every 30 secs
+            else if (this.duration.toFixed(1) % 30 == 0) {
+                const superID = Math.floor(Math.random() * 6);
+                console.log(`spawn super items no.${superID} to clients`);
+                this.connections.forEach(c => c.socket.emit('spawnGameObject', {
+                    id: shortID.generate(),
+                    name: "Item",
+                    super: superID,
+                    position: { x: 0, y: 0 }
+                }));
             }
         }, 100);
     }
@@ -318,7 +334,7 @@ module.exports = class GameRoom extends LobbyBase {
         let time = Math.round(this.duration);
         let minute = Math.floor(time/60);
         let second = time%60;
-        let formatTime = "0" + minute.toString() + ":" + second.toString().padStart(2, '0');
+        let formatTime = "0" + minute.toString() + " : " + second.toString().padStart(2, '0');
         this.connections.forEach(connection => {
             connection.socket.emit("updateTime", { time: formatTime });
         });
@@ -477,15 +493,7 @@ module.exports = class GameRoom extends LobbyBase {
                 this.connections.forEach(c => c.socket.emit('setSafeBoxHealth', returnData));
                 // game over
                 if (explodeSafeBoxID) {
-                    this.gameOver = true;
-
-                    console.log(`SafeBox: "${explodeSafeBoxID}" exploded`);
-                    this.connections.forEach(c => c.socket.emit('safeBoxExplode', { explodeSafeBoxID: explodeSafeBoxID }));
-                    setTimeout((() => {
-                        console.log(`Game room: ${this.id} game over. Winner: ${activatorInfo.team}`);
-                        this.connections.forEach(c => c.socket.emit('gameOver', { winTeam: activatorInfo.team }));
-                        this.cleanUpPlayingGameRoom();
-                    }).bind(this), 5000);
+                    safeBoxExplode(explodeSafeBoxID, activatorInfo.team);
                 }
 
                 break;
@@ -494,6 +502,18 @@ module.exports = class GameRoom extends LobbyBase {
             default:
                 break;
         }
+    }
+
+    safeBoxExplode(explodeSafeBoxID, team) {
+        this.gameOver = true;
+
+        console.log(`SafeBox: "${explodeSafeBoxID}" exploded`);
+        this.connections.forEach(c => c.socket.emit('safeBoxExplode', { explodeSafeBoxID }));
+        setTimeout((() => {
+            console.log(`Game room: ${this.id} game over. Winner: ${team}`);
+            this.connections.forEach(c => c.socket.emit('gameOver', { winTeam: team }));
+            this.cleanUpPlayingGameRoom();
+        }).bind(this), 5000);        
     }
 
     onCollisionDestroy(connection=Connection, data) {
@@ -601,7 +621,7 @@ module.exports = class GameRoom extends LobbyBase {
             team: this.inGamePlayersInfo[id].team,
             super: this.inGamePlayersInfo[id].super
         };
-        
+
         // check if enough magic power, deal consumption of magic power
         const amountMp = this.settings.superMp[this.inGamePlayersInfo[id].super];
         if (amountMp > this.inGamePlayersInfo[id].mp) { return; }
